@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mini-Games — StreamKit</title>
+  <link rel="stylesheet" href="../../../assets/styles/dashboard.css">
+  <script src="../../../assets/js/util.js"></script>
+  <style>
+    body { padding: 20px; }
+
+    .tabs {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 20px;
+      border-bottom: 2px solid var(--border);
+      padding-bottom: 0;
+    }
+    .tab {
+      padding: 10px 20px;
+      cursor: pointer;
+      border-radius: 8px 8px 0 0;
+      font-weight: 600;
+      font-size: 15px;
+      color: var(--muted);
+      border: none;
+      background: none;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -2px;
+      transition: color 0.15s;
+    }
+    .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+    .tab:hover:not(.active) { color: var(--text); }
+
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    /* ── POLL ── */
+    .poll-setup { display: flex; flex-direction: column; gap: 12px; }
+    .options-list { display: flex; flex-direction: column; gap: 8px; }
+    .option-row { display: flex; gap: 8px; }
+    .option-row input { flex: 1; }
+
+    .poll-running { display: flex; flex-direction: column; gap: 12px; }
+    .poll-timer-display {
+      text-align: center;
+      font-size: 52px;
+      font-weight: 800;
+      color: var(--accent);
+      line-height: 1;
+    }
+    .poll-timer-display.urgent { color: var(--red); animation: flash-red 1s infinite; }
+
+    .option-result {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding: 10px 14px;
+      background: var(--bg3);
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+    .option-result-top { display: flex; align-items: center; justify-content: space-between; }
+    .option-result-label { font-weight: 600; }
+    .option-result-votes { display: flex; align-items: center; gap: 6px; }
+    .vote-count { font-size: 20px; font-weight: 800; min-width: 36px; text-align: center; }
+    .vote-btn { background: var(--bg2); border: 1px solid var(--border); color: var(--text); border-radius: 6px; padding: 4px 12px; font-size: 18px; cursor: pointer; font-weight: 700; }
+    .vote-btn:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .opt-bar-track { height: 6px; background: var(--bg2); border-radius: 3px; margin-top: 4px; }
+    .opt-bar-fill { height: 100%; border-radius: 3px; background: var(--accent); transition: width 0.3s; }
+
+    .poll-result-banner {
+      text-align: center;
+      padding: 20px;
+      background: rgba(124,106,247,0.1);
+      border: 1px solid var(--accent);
+      border-radius: 10px;
+      animation: pop-in 0.3s ease;
+    }
+    .poll-result-banner .winner { font-size: 22px; font-weight: 800; color: var(--accent); }
+
+    /* ── TEAM BATTLE ── */
+    .teams-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    .team-card { text-align: center; padding: 20px; }
+    .team-name-input { font-size: 18px; font-weight: 700; text-align: center; }
+    .team-score { font-size: 48px; font-weight: 800; margin: 12px 0; }
+    .team-a { color: var(--blue); }
+    .team-b { color: var(--red); }
+    .winner-card {
+      display: none;
+      text-align: center;
+      padding: 30px 20px;
+      margin-bottom: 16px;
+      border: 2px solid var(--accent);
+      animation: pop-in 0.4s ease;
+    }
+    .winner-card.show { display: block; }
+    .winner-label { font-size: 14px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+    .winner-name { font-size: 36px; font-weight: 800; color: var(--accent); }
+
+    /* ── TRIVIA ── */
+    .trivia-setup { display: flex; flex-direction: column; gap: 12px; }
+    .trivia-running { display: flex; flex-direction: column; gap: 16px; }
+    .trivia-question-display {
+      font-size: 20px;
+      font-weight: 700;
+      padding: 20px;
+      background: var(--bg3);
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      line-height: 1.4;
+    }
+    .trivia-timer { text-align: center; font-size: 56px; font-weight: 800; color: var(--accent); }
+    .trivia-timer.urgent { color: var(--red); animation: flash-red 0.8s infinite; }
+    .answer-reveal {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--green);
+      padding: 16px 20px;
+      background: rgba(46,204,113,0.1);
+      border: 1px solid rgba(46,204,113,0.3);
+      border-radius: 10px;
+      text-align: center;
+      animation: pop-in 0.3s ease;
+    }
+    .answer-hidden { filter: blur(6px); cursor: pointer; }
+    .answer-hidden:hover { filter: blur(3px); }
+  </style>
+</head>
+<body>
+  <h1 style="margin-bottom:16px">Chat Mini-Games</h1>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('poll')">📊 Poll</button>
+    <button class="tab" onclick="switchTab('battle')">⚔️ Team Battle</button>
+    <button class="tab" onclick="switchTab('trivia')">🧠 Trivia</button>
+  </div>
+
+  <!-- ═══ POLL ═══ -->
+  <div class="panel active" id="panel-poll">
+    <div id="poll-setup" class="poll-setup">
+      <div>
+        <h3 style="margin-bottom:8px">Question</h3>
+        <input type="text" id="pollQuestion" placeholder="What do you want to ask chat?">
+      </div>
+      <div>
+        <h3 style="margin-bottom:8px">Options</h3>
+        <div class="options-list" id="optionsList">
+          <div class="option-row"><input type="text" placeholder="Option A" class="poll-opt"></div>
+          <div class="option-row"><input type="text" placeholder="Option B" class="poll-opt"></div>
+        </div>
+        <div style="margin-top:8px;display:flex;gap:8px;">
+          <button class="btn btn-ghost btn-sm" onclick="addOption()" id="addOptBtn">+ Add Option</button>
+          <button class="btn btn-ghost btn-sm" onclick="removeOption()" id="removeOptBtn">− Remove</button>
+        </div>
+      </div>
+      <div class="row">
+        <div style="flex:1">
+          <h3 style="margin-bottom:8px">Duration</h3>
+          <div class="row">
+            <input type="number" id="pollDuration" value="60" min="5" max="600" style="width:90px">
+            <span style="color:var(--muted)">seconds</span>
+          </div>
+        </div>
+      </div>
+      <button class="btn btn-primary btn-lg" onclick="startPoll()">▶ Start Poll</button>
+    </div>
+
+    <div id="poll-running" class="poll-running" style="display:none">
+      <div class="card" style="text-align:center;padding:16px">
+        <div style="color:var(--muted);font-size:13px;margin-bottom:4px">TIME REMAINING</div>
+        <div class="poll-timer-display" id="pollTimerDisplay">60</div>
+        <div id="pollQuestion-display" style="font-size:17px;font-weight:600;margin-top:8px"></div>
+      </div>
+      <div id="pollOptionsDisplay"></div>
+      <div class="row" style="justify-content:flex-end">
+        <button class="btn btn-danger btn-sm" onclick="endPoll()">End Poll</button>
+        <button class="btn btn-ghost btn-sm" onclick="resetPoll()">Reset</button>
+      </div>
+    </div>
+
+    <div id="poll-result" style="display:none">
+      <div class="poll-result-banner">
+        <div style="color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Poll Ended — Winner</div>
+        <div class="winner" id="pollWinner"></div>
+      </div>
+      <div id="pollFinalResults" style="margin-top:12px;display:flex;flex-direction:column;gap:8px"></div>
+      <div style="margin-top:16px;display:flex;justify-content:flex-end">
+        <button class="btn btn-ghost" onclick="resetPoll()">New Poll</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ TEAM BATTLE ═══ -->
+  <div class="panel" id="panel-battle">
+    <div class="card winner-card" id="winnerCard">
+      <div class="winner-label">🏆 Winner</div>
+      <div class="winner-name" id="winnerName"></div>
+    </div>
+
+    <div class="teams-row">
+      <div class="card team-card">
+        <input type="text" class="team-name-input" id="teamA" value="Team A" style="color:var(--blue)">
+        <div class="team-score team-a" id="scoreA">0</div>
+        <div class="row" style="justify-content:center;gap:8px">
+          <button class="btn btn-ghost btn-sm" onclick="changeScore('A',-1)">−</button>
+          <button class="btn btn-blue btn-sm" onclick="changeScore('A',1)">+1</button>
+        </div>
+      </div>
+      <div class="card team-card">
+        <input type="text" class="team-name-input" id="teamB" value="Team B" style="color:var(--red)">
+        <div class="team-score team-b" id="scoreB">0</div>
+        <div class="row" style="justify-content:center;gap:8px">
+          <button class="btn btn-ghost btn-sm" onclick="changeScore('B',-1)">−</button>
+          <button class="btn btn-loss btn-sm" onclick="changeScore('B',1)">+1</button>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:12px;flex-direction:column">
+      <button class="btn btn-primary btn-lg" style="width:100%" onclick="pickWinner()">🎲 Pick Random Winner</button>
+      <div class="row" style="justify-content:flex-end">
+        <button class="btn btn-ghost btn-sm" onclick="resetBattle()">Reset</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ TRIVIA ═══ -->
+  <div class="panel" id="panel-trivia">
+    <div id="trivia-setup" class="trivia-setup">
+      <div>
+        <h3 style="margin-bottom:8px">Question</h3>
+        <textarea id="triviaQ" rows="3" placeholder="Type your trivia question…"></textarea>
+      </div>
+      <div>
+        <h3 style="margin-bottom:8px">Answer</h3>
+        <input type="text" id="triviaA" placeholder="The correct answer">
+      </div>
+      <div class="row">
+        <input type="number" id="triviaDuration" value="30" min="5" max="300" style="width:90px">
+        <span style="color:var(--muted)">seconds</span>
+      </div>
+      <button class="btn btn-primary btn-lg" onclick="startTrivia()">▶ Start Trivia</button>
+    </div>
+
+    <div id="trivia-running" class="trivia-running" style="display:none">
+      <div class="trivia-question-display" id="triviaQDisplay"></div>
+      <div class="trivia-timer" id="triviaTimerDisplay">30</div>
+      <div id="triviaAnswerWrap"></div>
+      <div class="row" style="justify-content:flex-end">
+        <button class="btn btn-primary" id="revealBtn" onclick="revealAnswer()">👁 Reveal Answer</button>
+        <button class="btn btn-ghost btn-sm" onclick="resetTrivia()">Reset</button>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    .obs-footer { margin-top: 20px; }
+  </style>
+  <div class="obs-footer">
+    <button class="btn-copy-obs" id="copyOBSBtn" onclick="copyOBSLink()">📋 Copy OBS Browser Source URL</button>
+  </div>
+
+  <script>
+    // ── OBS state keys ──
+    const MG_POLL   = 'streamkit_mg_poll';
+    const MG_BATTLE = 'streamkit_mg_battle';
+    const MG_TRIVIA = 'streamkit_mg_trivia';
+
+    function syncPoll(show) {
+      localStorage.setItem(MG_POLL, JSON.stringify({
+        show,
+        question: show ? (document.getElementById('pollQuestion-display').textContent || '') : '',
+        options:  pollOptions.map((opt, i) => ({ label: opt, votes: pollVotes[i] || 0 })),
+        timeLeft: pollSecondsLeft,
+        ended:    !pollTimer && show,
+      }));
+    }
+    function syncBattle() {
+      const nameA  = document.getElementById('teamA').value.trim() || 'Team A';
+      const nameB  = document.getElementById('teamB').value.trim() || 'Team B';
+      const winner = document.getElementById('winnerCard').classList.contains('show')
+        ? document.getElementById('winnerName').textContent : null;
+      localStorage.setItem(MG_BATTLE, JSON.stringify({
+        teamA: { name: nameA, score: scores.A },
+        teamB: { name: nameB, score: scores.B },
+        winner,
+      }));
+    }
+    function syncTrivia(show) {
+      localStorage.setItem(MG_TRIVIA, JSON.stringify({
+        show,
+        question: show ? (document.getElementById('triviaQDisplay')?.textContent || '') : '',
+        timeLeft: triviaLeft,
+        revealed: answerRevealed,
+        answer:   answerRevealed ? triviaAnswer : null,
+      }));
+    }
+
+    // ── Tab switch ──
+    function switchTab(id) {
+      document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', ['poll','battle','trivia'][i]===id));
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      document.getElementById('panel-'+id).classList.add('active');
+    }
+
+    // ═══ POLL ═══
+    let pollTimer = null;
+    let pollVotes = [];
+    let pollOptions = [];
+    let pollSecondsLeft = 0;
+
+    function addOption() {
+      const list = document.getElementById('optionsList');
+      if (list.children.length >= 4) return;
+      const letters = ['A','B','C','D'];
+      const div = document.createElement('div');
+      div.className = 'option-row';
+      div.innerHTML = `<input type="text" placeholder="Option ${letters[list.children.length]}" class="poll-opt">`;
+      list.appendChild(div);
+      if (list.children.length >= 4) document.getElementById('addOptBtn').disabled = true;
+    }
+    function removeOption() {
+      const list = document.getElementById('optionsList');
+      if (list.children.length <= 2) return;
+      list.removeChild(list.lastChild);
+      document.getElementById('addOptBtn').disabled = false;
+    }
+
+    function startPoll() {
+      const q = document.getElementById('pollQuestion').value.trim();
+      const opts = [...document.querySelectorAll('.poll-opt')].map(i => i.value.trim()).filter(Boolean);
+      if (!q || opts.length < 2) { alert('Enter a question and at least 2 options.'); return; }
+      pollOptions = opts;
+      pollVotes = opts.map(() => 0);
+      pollSecondsLeft = parseInt(document.getElementById('pollDuration').value) || 60;
+      document.getElementById('pollQuestion-display').textContent = q;
+
+      document.getElementById('poll-setup').style.display = 'none';
+      document.getElementById('poll-running').style.display = 'flex';
+      document.getElementById('poll-result').style.display = 'none';
+
+      renderPollOptions();
+      syncPoll(true);
+      tickPoll();
+      pollTimer = setInterval(tickPoll, 1000);
+    }
+
+    function tickPoll() {
+      const el = document.getElementById('pollTimerDisplay');
+      el.textContent = pollSecondsLeft;
+      el.className = 'poll-timer-display' + (pollSecondsLeft <= 10 ? ' urgent' : '');
+      syncPoll(true);
+      if (pollSecondsLeft <= 0) { clearInterval(pollTimer); pollTimer = null; endPoll(); return; }
+      pollSecondsLeft--;
+    }
+
+    function renderPollOptions() {
+      const total = pollVotes.reduce((a,b) => a+b, 0);
+      const container = document.getElementById('pollOptionsDisplay');
+      container.innerHTML = '';
+      const letters = ['A','B','C','D'];
+      pollOptions.forEach((opt, i) => {
+        const pct = total > 0 ? Math.round((pollVotes[i]/total)*100) : 0;
+        const div = document.createElement('div');
+        div.className = 'option-result';
+        div.innerHTML = `
+          <div class="option-result-top">
+            <span class="option-result-label">${letters[i]}. ${escHtml(opt)}</span>
+            <div class="option-result-votes">
+              <button class="vote-btn" onclick="vote(${i},-1)">−</button>
+              <span class="vote-count">${pollVotes[i]}</span>
+              <button class="vote-btn" onclick="vote(${i},1)">+</button>
+            </div>
+          </div>
+          <div class="opt-bar-track"><div class="opt-bar-fill" style="width:${pct}%"></div></div>
+          <div style="font-size:12px;color:var(--muted);text-align:right">${pct}%</div>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function vote(idx, delta) {
+      pollVotes[idx] = Math.max(0, pollVotes[idx] + delta);
+      renderPollOptions();
+      syncPoll(true);
+    }
+
+    function endPoll() {
+      clearInterval(pollTimer);
+      pollTimer = null;
+      document.getElementById('poll-running').style.display = 'none';
+      document.getElementById('poll-result').style.display = 'block';
+
+      const maxV = Math.max(...pollVotes);
+      const letters = ['A','B','C','D'];
+      const winnerIdx = pollVotes.indexOf(maxV);
+      document.getElementById('pollWinner').textContent = `${letters[winnerIdx]}. ${pollOptions[winnerIdx]} (${maxV} votes)`;
+
+      const fin = document.getElementById('pollFinalResults');
+      const total = pollVotes.reduce((a,b) => a+b, 0);
+      fin.innerHTML = '';
+      pollOptions.forEach((opt, i) => {
+        const pct = total > 0 ? Math.round((pollVotes[i]/total)*100) : 0;
+        const div = document.createElement('div');
+        div.className = 'option-result';
+        div.style.opacity = pollVotes[i] === maxV ? '1' : '0.6';
+        div.innerHTML = `
+          <div class="option-result-top">
+            <span>${letters[i]}. ${escHtml(opt)}</span>
+            <span style="font-weight:700">${pollVotes[i]} votes (${pct}%)</span>
+          </div>
+          <div class="opt-bar-track"><div class="opt-bar-fill" style="width:${pct}%;background:${pollVotes[i]===maxV?'var(--green)':'var(--accent)'}"></div></div>
+        `;
+        fin.appendChild(div);
+      });
+      syncPoll(true); // show ended state in overlay
+    }
+
+    function resetPoll() {
+      clearInterval(pollTimer);
+      pollTimer = null;
+      syncPoll(false); // hide from overlay
+      document.getElementById('poll-setup').style.display = 'flex';
+      document.getElementById('poll-running').style.display = 'none';
+      document.getElementById('poll-result').style.display = 'none';
+    }
+
+    // ═══ TEAM BATTLE ═══
+    let scores = { A: 0, B: 0 };
+
+    function changeScore(team, delta) {
+      scores[team] = Math.max(0, scores[team] + delta);
+      document.getElementById('score' + team).textContent = scores[team];
+      syncBattle();
+    }
+
+    function pickWinner() {
+      const nameA = document.getElementById('teamA').value.trim() || 'Team A';
+      const nameB = document.getElementById('teamB').value.trim() || 'Team B';
+      const winner = Math.random() < 0.5 ? nameA : nameB;
+      const wc = document.getElementById('winnerCard');
+      document.getElementById('winnerName').textContent = winner;
+      wc.classList.add('show');
+      syncBattle();
+    }
+
+    function resetBattle() {
+      scores = { A: 0, B: 0 };
+      document.getElementById('scoreA').textContent = '0';
+      document.getElementById('scoreB').textContent = '0';
+      document.getElementById('winnerCard').classList.remove('show');
+      syncBattle();
+    }
+
+    // ═══ TRIVIA ═══
+    let triviaTimer = null;
+    let triviaLeft = 0;
+    let triviaAnswer = '';
+    let answerRevealed = false;
+
+    function startTrivia() {
+      const q = document.getElementById('triviaQ').value.trim();
+      triviaAnswer = document.getElementById('triviaA').value.trim();
+      if (!q || !triviaAnswer) { alert('Enter both a question and answer.'); return; }
+      triviaLeft = parseInt(document.getElementById('triviaDuration').value) || 30;
+      answerRevealed = false;
+
+      document.getElementById('trivia-setup').style.display = 'none';
+      document.getElementById('trivia-running').style.display = 'flex';
+      document.getElementById('triviaQDisplay').textContent = q;
+      document.getElementById('triviaAnswerWrap').innerHTML = '';
+      document.getElementById('revealBtn').disabled = false;
+
+      syncTrivia(true);
+      tickTrivia();
+      triviaTimer = setInterval(tickTrivia, 1000);
+    }
+
+    function tickTrivia() {
+      const el = document.getElementById('triviaTimerDisplay');
+      el.textContent = triviaLeft;
+      el.className = 'trivia-timer' + (triviaLeft <= 5 ? ' urgent' : '');
+      syncTrivia(true);
+      if (triviaLeft <= 0) { clearInterval(triviaTimer); triviaTimer = null; }
+      else triviaLeft--;
+    }
+
+    function revealAnswer() {
+      clearInterval(triviaTimer);
+      triviaTimer = null;
+      answerRevealed = true;
+      document.getElementById('triviaTimerDisplay').textContent = '0';
+      document.getElementById('revealBtn').disabled = true;
+      const wrap = document.getElementById('triviaAnswerWrap');
+      wrap.innerHTML = `<div class="answer-reveal">✅ ${escHtml(triviaAnswer)}</div>`;
+      syncTrivia(true);
+    }
+
+    function resetTrivia() {
+      clearInterval(triviaTimer);
+      triviaTimer = null;
+      syncTrivia(false);
+      document.getElementById('trivia-setup').style.display = 'flex';
+      document.getElementById('trivia-running').style.display = 'none';
+    }
+
+    // init battle state so overlay always has something to read
+    syncBattle();
+  </script>
+</body>
+</html>

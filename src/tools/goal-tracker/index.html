@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Goal Tracker — StreamKit</title>
+  <link rel="stylesheet" href="../../../assets/styles/dashboard.css">
+  <script src="../../../assets/js/util.js"></script>
+  <style>
+    body { padding: 20px; }
+    .tool-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+
+    .goals-list { display: flex; flex-direction: column; gap: 16px; }
+
+    .goal-card { position: relative; }
+    .goal-card.complete { border-color: var(--green); }
+    .goal-card.complete .goal-label-input { color: var(--green); }
+
+    .goal-top { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+    .goal-label-input {
+      flex: 1;
+      font-size: 17px;
+      font-weight: 700;
+      background: transparent;
+      border: none;
+      border-bottom: 1px solid transparent;
+      border-radius: 0;
+      padding: 2px 4px;
+      color: var(--text);
+    }
+    .goal-label-input:focus { border-bottom-color: var(--accent); outline: none; }
+
+    .goal-del {
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 18px;
+      padding: 0 4px;
+    }
+    .goal-del:hover { color: var(--red); }
+
+    .goal-progress-row { margin-bottom: 10px; }
+    .progress-track { height: 20px; border-radius: 10px; }
+    .progress-fill { border-radius: 10px; }
+
+    .goal-numbers {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 14px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+    .goal-current-val { font-size: 22px; font-weight: 800; color: var(--text); }
+    .goal-target-val { font-size: 14px; color: var(--muted); }
+    .goal-pct { font-size: 14px; font-weight: 700; color: var(--accent); }
+    .goal-card.complete .goal-pct { color: var(--green); }
+
+    .goal-controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 12px; }
+    .goal-controls .set-row { display: flex; gap: 6px; align-items: center; flex: 1; min-width: 160px; }
+    .goal-controls .set-row input { width: 80px; text-align: center; }
+    .goal-controls .target-row { display: flex; gap: 6px; align-items: center; }
+    .goal-controls .target-row input { width: 80px; text-align: center; }
+
+    .complete-banner {
+      display: none;
+      text-align: center;
+      padding: 10px;
+      background: rgba(46,204,113,0.15);
+      border-radius: 0 0 10px 10px;
+      color: var(--green);
+      font-weight: 700;
+      font-size: 14px;
+      margin: 8px -20px -20px;
+      border-top: 1px solid rgba(46,204,113,0.3);
+      animation: pulse-green 1.5s infinite;
+    }
+    .goal-card.complete .complete-banner { display: block; }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <div class="tool-header">
+    <h1>Goal Tracker</h1>
+    <button class="btn btn-primary" onclick="addGoal()">+ New Goal</button>
+  </div>
+
+  <div class="goals-list" id="goalsList">
+    <div class="empty-state" id="emptyState">
+      No goals yet — click <strong>+ New Goal</strong> to get started.
+    </div>
+  </div>
+
+  <script>
+    const KEY = 'streamkit_goals';
+    let goals = [];
+
+    function load() {
+      try { const s = localStorage.getItem(KEY); goals = s ? JSON.parse(s) : []; } catch(e) { goals = []; }
+      render();
+    }
+    function save() { localStorage.setItem(KEY, JSON.stringify(goals)); }
+
+    function addGoal() {
+      goals.push({ id: uid(), label: 'New Goal', current: 0, target: 100 });
+      save();
+      render();
+    }
+
+    function deleteGoal(id) {
+      goals = goals.filter(g => g.id !== id);
+      save();
+      render();
+    }
+
+    function updateLabel(id, val) {
+      const g = goals.find(g => g.id === id);
+      if (g) { g.label = val; save(); }
+    }
+
+    function increment(id, delta) {
+      const g = goals.find(g => g.id === id);
+      if (!g) return;
+      g.current = Math.max(0, g.current + delta);
+      save();
+      render();
+    }
+
+    function setCurrent(id, val) {
+      const g = goals.find(g => g.id === id);
+      if (!g) return;
+      g.current = Math.max(0, parseInt(val) || 0);
+      save();
+      render();
+    }
+
+    function setTarget(id, val) {
+      const g = goals.find(g => g.id === id);
+      if (!g) return;
+      g.target = Math.max(1, parseInt(val) || 1);
+      if (g.current > g.target) g.current = g.target;
+      save();
+      render();
+    }
+
+    function render() {
+      const list = document.getElementById('goalsList');
+      document.getElementById('emptyState').style.display = goals.length ? 'none' : 'block';
+
+      // remove existing goal cards
+      list.querySelectorAll('.goal-card').forEach(el => el.remove());
+
+      goals.forEach(g => {
+        const pct = g.target > 0 ? Math.min(100, Math.round((g.current / g.target) * 100)) : 0;
+        const complete = g.current >= g.target;
+
+        const card = document.createElement('div');
+        card.className = 'card goal-card' + (complete ? ' complete' : '');
+        card.innerHTML = `
+          <div class="goal-top">
+            <input class="goal-label-input" type="text" value="${esc(g.label)}"
+              onchange="updateLabel('${g.id}', this.value)"
+              onblur="updateLabel('${g.id}', this.value)">
+            <button class="goal-del" onclick="deleteGoal('${g.id}')" title="Delete">×</button>
+          </div>
+
+          <div class="goal-progress-row">
+            <div class="progress-track">
+              <div class="progress-fill ${complete ? 'complete' : ''}" style="width:${pct}%"></div>
+            </div>
+            <div class="goal-numbers">
+              <span><span class="goal-current-val">${g.current}</span> <span class="goal-target-val">/ ${g.target}</span></span>
+              <span class="goal-pct">${pct}%</span>
+            </div>
+          </div>
+
+          <div class="goal-controls">
+            <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+              <button class="btn btn-ghost btn-sm" onclick="increment('${g.id}',-1)">−</button>
+              <button class="btn btn-primary" onclick="increment('${g.id}',1)">+1</button>
+              <div class="set-row">
+                <span style="color:var(--muted);font-size:13px;white-space:nowrap">Set current:</span>
+                <input type="number" min="0" value="${g.current}" style="width:80px;text-align:center"
+                  onchange="setCurrent('${g.id}', this.value)"
+                  onblur="setCurrent('${g.id}', this.value)">
+              </div>
+              <div class="target-row">
+                <span style="color:var(--muted);font-size:13px;white-space:nowrap">Target:</span>
+                <input type="number" min="1" value="${g.target}" style="width:80px;text-align:center"
+                  onchange="setTarget('${g.id}', this.value)"
+                  onblur="setTarget('${g.id}', this.value)">
+              </div>
+            </div>
+          </div>
+
+          ${complete ? '<div class="complete-banner">🎉 Goal Reached!</div>' : ''}
+        `;
+        list.appendChild(card);
+      });
+    }
+
+    load();
+  </script>
+
+  <!-- ── Overlay Style Panel ── -->
+  <style>
+    .preview-hint { font-size: 11px; color: var(--muted); margin-top: 10px; }
+    .goal-preview-box { padding: 14px 16px; background: rgba(0,0,0,0.6); border-radius: 8px; border: 1px solid rgba(255,255,255,0.08); min-width: 220px; display: inline-block; }
+    .pv-goal-header { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+    .pv-goal-name { font-size: 14px; font-weight: 700; color: rgba(255,255,255,0.9); }
+    .pv-goal-nums { font-size: 18px; font-weight: 800; color: #fff; }
+    .pv-bar-track { height: 12px; background: rgba(0,0,0,0.5); border-radius: 6px; overflow: hidden; border: 1px solid rgba(255,255,255,0.15); }
+    .pv-bar-fill  { height: 100%; border-radius: 6px; transition: background 0.3s; }
+    .pv-pct { font-size: 11px; color: rgba(255,255,255,0.6); text-align: right; margin-top: 4px; }
+  </style>
+
+  <button class="style-toggle-btn" id="styleToggle" onclick="toggleStylePanel()">
+    🎨 Overlay Style <span class="st-arrow">▼</span>
+  </button>
+  <div class="style-panel" id="stylePanel">
+    <div class="style-section">
+      <div class="style-section-label">Font</div>
+      <div class="font-grid" id="fontGrid"></div>
+    </div>
+    <div class="style-section">
+      <div class="style-section-label">Colors</div>
+      <div class="color-row">
+        <div class="color-swatch"><label>Progress Bar</label>
+          <input type="color" id="colorBar" value="#7c6af7" oninput="saveOvStyle()"></div>
+        <div class="color-swatch"><label>Goal Reached</label>
+          <input type="color" id="colorComplete" value="#2ecc71" oninput="saveOvStyle()"></div>
+      </div>
+    </div>
+    <div class="style-section">
+      <div class="style-section-label">Preview</div>
+      <div class="goal-preview-box" id="previewBox">
+        <div class="pv-goal-header">
+          <span class="pv-goal-name">Sub Goal</span>
+          <span class="pv-goal-nums">47 / 100</span>
+        </div>
+        <div class="pv-bar-track"><div class="pv-bar-fill" id="pvBar" style="width:47%"></div></div>
+        <div class="pv-pct">47%</div>
+      </div>
+      <div class="preview-hint">Changes appear in the OBS overlay within 2 seconds.</div>
+      <div class="obs-link-row">
+        <button class="btn-copy-obs" id="copyOBSBtn" onclick="copyOBSLink()">📋 Copy OBS Browser Source URL</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const OV_KEY  = 'streamkit_overlay_goals';
+    const OV_DEFS = { font: 'system', colorBar: '#7c6af7', colorComplete: '#2ecc71' };
+
+    let currentOvFont = 'system';
+    function getOvStyle() {
+      try { return { ...OV_DEFS, ...JSON.parse(localStorage.getItem(OV_KEY)) }; }
+      catch(e) { return { ...OV_DEFS }; }
+    }
+    function saveOvStyle() {
+      const s = { font: currentOvFont, colorBar: document.getElementById('colorBar').value, colorComplete: document.getElementById('colorComplete').value };
+      localStorage.setItem(OV_KEY, JSON.stringify(s));
+      updatePreview(s);
+    }
+    function updatePreview(s) {
+      const f = StreamKit.FONTS.find(f => f.id === s.font) || StreamKit.FONTS[0];
+      document.getElementById('previewBox').style.fontFamily = f.css;
+      document.getElementById('pvBar').style.background = s.colorBar;
+    }
+    function selectOvFont(id) {
+      currentOvFont = id;
+      document.querySelectorAll('.font-card').forEach(c => c.classList.toggle('active', c.dataset.fid === id));
+      saveOvStyle();
+    }
+    function buildFontGrid() {
+      const grid = document.getElementById('fontGrid');
+      grid.innerHTML = '';
+      StreamKit.FONTS.forEach(f => {
+        const card = document.createElement('div');
+        card.className = 'font-card' + (f.id === currentOvFont ? ' active' : '');
+        card.dataset.fid = f.id;
+        card.onclick = () => selectOvFont(f.id);
+        const licenseClass = StreamKit.licenseClass(f.license);
+        card.innerHTML = `<span class="font-sample" style="font-family:${f.css}">Aa</span><span class="font-name">${f.label}</span><span class="font-license ${licenseClass}">${f.license}</span>`;
+        grid.appendChild(card);
+      });
+    }
+    function loadOvStyle() {
+      const s = getOvStyle();
+      currentOvFont = s.font || 'system';
+      document.getElementById('colorBar').value      = s.colorBar      || '#7c6af7';
+      document.getElementById('colorComplete').value = s.colorComplete || '#2ecc71';
+      buildFontGrid();
+      updatePreview(s);
+    }
+    function toggleStylePanel() {
+      const open = document.getElementById('stylePanel').classList.toggle('open');
+      document.getElementById('styleToggle').classList.toggle('open', open);
+    }
+    loadOvStyle();
+  </script>
+</body>
+</html>

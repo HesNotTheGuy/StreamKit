@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Alerts Overlay — StreamKit</title>
+  <link rel="stylesheet" href="../../../assets/styles/overlay.css">
+  <style>
+    /* ── Status message (shown when not configured) ── */
+    #statusMsg {
+      position: fixed;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 13px;
+      color: rgba(255,255,255,0.6);
+      text-shadow: 0 1px 4px rgba(0,0,0,0.9);
+      white-space: nowrap;
+      pointer-events: none;
+    }
+
+    /* ── Alert box ── */
+    #alertBox {
+      display: none;
+      position: fixed;
+      bottom: 40px;
+      left: 50%;
+      transform: translateX(-50%);
+      max-width: 480px;
+      min-width: 240px;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(124, 106, 247, 0.5);
+      border-radius: 14px;
+      padding: 18px 24px;
+      box-shadow:
+        0 0 20px rgba(124, 106, 247, 0.3),
+        inset 0 0 20px rgba(0, 0, 0, 0.3);
+      text-align: center;
+    }
+
+    #alertImg {
+      display: none;
+      max-height: 160px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      max-width: 100%;
+      object-fit: contain;
+    }
+
+    #alertText {
+      font-family: Impact, 'Arial Black', 'Arial Narrow Bold', system-ui, sans-serif;
+      font-size: 28px;
+      font-weight: 800;
+      color: #fff;
+      line-height: 1.2;
+      text-shadow:
+        2px 2px 0 #000,
+        -2px -2px 0 #000,
+        2px -2px 0 #000,
+        -2px 2px 0 #000,
+        0 2px 8px rgba(0, 0, 0, 0.9);
+    }
+
+    /* ── Entry animations ── */
+    @keyframes alert-fade-in {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+
+    @keyframes alert-slide-up {
+      from { opacity: 0; transform: translateX(-50%) translateY(30px); }
+      to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+    }
+
+    @keyframes alert-pop {
+      0%   { opacity: 0; transform: translateX(-50%) scale(0.7); }
+      70%  {             transform: translateX(-50%) scale(1.05); }
+      100% { opacity: 1; transform: translateX(-50%) scale(1); }
+    }
+
+    /* ── Exit animation ── */
+    @keyframes alert-fade-out {
+      from { opacity: 1; }
+      to   { opacity: 0; }
+    }
+
+    .anim-fade     { animation: alert-fade-in  0.5s ease forwards; }
+    .anim-slide-up { animation: alert-slide-up 0.5s ease forwards; }
+    .anim-pop      { animation: alert-pop      0.5s ease forwards; }
+    .anim-out      { animation: alert-fade-out 0.4s ease forwards; }
+  </style>
+</head>
+<body>
+
+  <div id="statusMsg"></div>
+  <div id="alertBox">
+    <img id="alertImg" src="" alt="">
+    <div id="alertText"></div>
+  </div>
+
+  <script>
+    const TOKEN_KEY  = 'streamkit_alerts_token';
+    const CONFIG_KEY = 'streamkit_alerts_config';
+    const TEST_KEY   = 'streamkit_alerts_test';
+
+    const SUB_TYPE_MAP = {
+      'channel.follow':               'follow',
+      'channel.subscribe':            'subscribe',
+      'channel.subscription.message': 'resub',
+      'channel.subscription.gift':    'gift_sub',
+      'channel.cheer':                'cheer',
+      'channel.raid':                 'raid',
+    };
+
+    let tokenData  = null;
+    let config     = null;
+    let alertQueue = [];
+    let alertBusy  = false;
+    let ws         = null;
+    let lastTestVal = null;
+    let reconnectAttempts = 0;
+    let authBlocked = false; // set true on persistent 401/403 - stops all reconnects
+    let wsGen = 0;
+
+    // ── Helpers ──────────────────────────────────────────────────────────────
+    function showStatus(msg) {
+      document.getElementById('statusMsg').textContent = msg;
+    }
+
+    function clearStatus() {
+      document.getElementById('statusMsg').textContent = '';
+    }
+
+    function tierLabel(tier) {
+      if (tier === '3000') return 'Tier 3';
+      if (tier === '2000') return 'Tier 2';
+      return 'Tier 1';
+    }
+
+    function fillVars(template, vars) {
+      return template.replace(/\{(\w+)\}/g, (_, k) =>
+        vars[k] !== undefined ? vars[k] : `{${k}}`
+      );
+    }
+
+    function loadData() {
+      try { tokenData = JSON.parse(localStorage.getItem(TOKEN_KEY)); }
+      catch(e) { tokenData = null; }
+
+      try {
+        config = JSON.parse(localStorage.getItem(CONFIG_KEY));
+      } catch(e) { config = null; }
+    }
+
+    // ── Alert queue ──────────────────────────────────────────────────────────
+    function enqueue(eventKey, vars) {
+      if (!config || !config.events) return;
+      const cfg = config.events[eventKey];
+      if (!cfg || !cfg.enabled) return;
+
+      if (alertQueue.length >= 20) {
+        alertQueue.shift(); // drop oldest
+      }
+      alertQueue.push({ eventKey, vars, cfg });
+      if (!alertBusy) processQueue();
+    }
+
+    function processQueue() {
+      if (alertQueue.length === 0) {
+        alertBusy = false;
+        return;
+      }
+      alertBusy = true;
+      const item = alertQueue.shift();
+      showAlert(item);
+    }
+
+    function showAlert(item) {
+      const { vars, cfg } = item;
+      const box = document.getElementById('alertBox');
+      const img = document.getElementById('alertImg');
+      const txt = document.getElementById('alertText');
+
+      // reset
+      box.className = '';
+      box.style.animation = '';
+      img.style.display = 'none';
+      img.src = '';
+
+      // image (whitelist http/https only)
+      if (cfg.imageUrl && cfg.imageUrl.trim()) {
+        const url = cfg.imageUrl.trim();
+        if (url && /^https?:\/\//i.test(url)) {
+          img.src = url;
+          img.style.display = 'block';
+        }
+      }
+
+      // text
+      txt.textContent = fillVars(cfg.text, vars);
+
+      // sound
+      if (cfg.soundUrl && cfg.soundUrl.trim()) {
+        try {
+          const audio = new Audio(cfg.soundUrl.trim());
+          audio.play().catch(() => {});
+        } catch(e) {}
+      }
+
+      // show
+      box.style.display = 'block';
+
+      // entry animation
+      const animClass = cfg.animation === 'pop' ? 'anim-pop'
+        : cfg.animation === 'fade' ? 'anim-fade'
+        : 'anim-slide-up';
+      box.classList.add(animClass);
+
+      // wait for duration then exit
+      const durationMs = ((cfg.duration || 6) * 1000);
+      setTimeout(() => {
+        box.classList.remove(animClass);
+        box.classList.add('anim-out');
+        setTimeout(() => {
+          box.style.display = 'none';
+          box.className = '';
+          processQueue();
+        }, 400);
+      }, durationMs);
+    }
+
+    // ── EventSub → alert vars mapping ────────────────────────────────────────
+    function eventToVars(subType, event) {
+      switch (subType) {
+        case 'channel.follow':
+          return { eventKey: 'follow', vars: { user: event.user_name } };
+
+        case 'channel.subscribe':
+          return {
+            eventKey: 'subscribe',
+            vars: { user: event.user_name, tier: tierLabel(event.tier) },
+          };
+
+        case 'channel.subscription.message':
+          return {
+            eventKey: 'resub',
+            vars: {
+              user: event.user_name,
+              months: event.cumulative_months,
+              tier: tierLabel(event.tier),
+              message: (event.message && event.message.text) ? event.message.text : '',
+            },
+          };
+
+        case 'channel.subscription.gift':
+          return {
+            eventKey: 'gift_sub',
+            vars: {
+              user: event.user_name,
+              recipient: event.recipient_user_name,
+              tier: tierLabel(event.tier),
+            },
+          };
+
+        case 'channel.cheer':
+          return {
+            eventKey: 'cheer',
+            vars: { user: event.user_name || 'Anonymous', amount: event.bits },
+          };
+
+        case 'channel.raid':
+          return {
+            eventKey: 'raid',
+            vars: { user: event.from_broadcaster_user_name, viewers: event.viewers },
+          };
+
+        default:
+          return null;
+      }
+    }
+
+    // ── EventSub subscriptions ───────────────────────────────────────────────
+    async function subscribe(sessionId) {
+      if (!tokenData || !config) return;
+
+      const { access_token, client_id, broadcaster_id } = tokenData;
+      const headers = {
+        'Authorization': `Bearer ${access_token}`,
+        'Client-Id': client_id,
+        'Content-Type': 'application/json',
+      };
+      const transport = { method: 'websocket', session_id: sessionId };
+      const bid = broadcaster_id;
+
+      const subs = [];
+
+      if (config.events.follow && config.events.follow.enabled) {
+        subs.push({
+          type: 'channel.follow', version: '2',
+          condition: { broadcaster_user_id: bid, moderator_user_id: bid },
+          transport,
+        });
+      }
+      if (config.events.subscribe && config.events.subscribe.enabled) {
+        subs.push({
+          type: 'channel.subscribe', version: '1',
+          condition: { broadcaster_user_id: bid },
+          transport,
+        });
+      }
+      if (config.events.resub && config.events.resub.enabled) {
+        subs.push({
+          type: 'channel.subscription.message', version: '1',
+          condition: { broadcaster_user_id: bid },
+          transport,
+        });
+      }
+      if (config.events.gift_sub && config.events.gift_sub.enabled) {
+        subs.push({
+          type: 'channel.subscription.gift', version: '1',
+          condition: { broadcaster_user_id: bid },
+          transport,
+        });
+      }
+      if (config.events.cheer && config.events.cheer.enabled) {
+        subs.push({
+          type: 'channel.cheer', version: '1',
+          condition: { broadcaster_user_id: bid },
+          transport,
+        });
+      }
+      if (config.events.raid && config.events.raid.enabled) {
+        subs.push({
+          type: 'channel.raid', version: '1',
+          condition: { to_broadcaster_user_id: bid },
+          transport,
+        });
+      }
+
+      for (const body of subs) {
+        try {
+          const resp = await fetch('https://api.twitch.tv/helix/eventsub/subscriptions', {
+            method: 'POST', headers, body: JSON.stringify(body),
+          });
+          if (resp.status === 401 || resp.status === 403) {
+            authBlocked = true;
+            showStatus('⚠ Token expired or scope missing — reconnect in Alerts tool');
+            try { ws && ws.close(); } catch(e) {}
+            return; // stop subscribing further
+          }
+          if (resp.status === 409) {
+            // duplicate subscription — already exists, skip silently
+            continue;
+          }
+          if (resp.status === 429) {
+            // rate limited — back off rest of subs
+            const retryAfter = parseInt(resp.headers.get('Ratelimit-Reset')) || 60;
+            console.warn('EventSub rate limited, backing off', retryAfter, 's');
+            return;
+          }
+          // 2xx success — fine
+        } catch(e) { /* network error, continue */ }
+      }
+    }
+
+    // ── WebSocket ────────────────────────────────────────────────────────────
+    function connectWS() {
+      if (authBlocked) return;
+      if (ws) {
+        try {
+          ws.onmessage = ws.onclose = ws.onerror = null;
+          ws.close();
+        } catch(e) {}
+        ws = null;
+      }
+
+      wsGen++;
+      const myGen = wsGen;
+
+      ws = new WebSocket('wss://eventsub.wss.twitch.tv/ws');
+
+      ws.addEventListener('message', async (raw) => {
+        if (myGen !== wsGen) return;
+        let msg;
+        try { msg = JSON.parse(raw.data); } catch(e) { return; }
+
+        const msgType = msg.metadata && msg.metadata.message_type;
+
+        if (msgType === 'session_welcome') {
+          clearStatus();
+          reconnectAttempts = 0;
+          authBlocked = false;
+          const sessionId = msg.payload.session.id;
+          await subscribe(sessionId);
+        } else if (msgType === 'notification') {
+          const subType = msg.payload.subscription && msg.payload.subscription.type;
+          const event   = msg.payload.event;
+          if (!subType || !event) return;
+          const mapped = eventToVars(subType, event);
+          if (mapped) enqueue(mapped.eventKey, mapped.vars);
+        } else if (msgType === 'session_keepalive') {
+          // ignore
+        } else if (msgType === 'session_reconnect') {
+          // Twitch requests reconnect to new URL
+          const reconnectUrl = msg.payload && msg.payload.session && msg.payload.session.reconnect_url;
+          if (reconnectUrl) reconnectTo(reconnectUrl);
+        }
+      });
+
+      ws.addEventListener('close', () => {
+        if (myGen !== wsGen) return;
+        const delay = Math.min(60000, 5000 * Math.pow(1.5, reconnectAttempts)) + Math.random() * 1000;
+        reconnectAttempts++;
+        setTimeout(() => { if (!authBlocked) connectWS(); }, delay);
+      });
+
+      ws.addEventListener('error', () => {
+        // close event will fire next, triggering reconnect
+      });
+    }
+
+    function reconnectTo(url) {
+      if (authBlocked) return;
+      if (ws) {
+        try {
+          ws.onmessage = ws.onclose = ws.onerror = null;
+          ws.close();
+        } catch(e) {}
+        ws = null;
+      }
+
+      wsGen++;
+      const myGen = wsGen;
+
+      ws = new WebSocket(url);
+      ws.addEventListener('message', async (raw) => {
+        if (myGen !== wsGen) return;
+        let msg;
+        try { msg = JSON.parse(raw.data); } catch(e) { return; }
+        const msgType = msg.metadata && msg.metadata.message_type;
+        if (msgType === 'session_welcome') {
+          clearStatus();
+          reconnectAttempts = 0;
+          authBlocked = false;
+          await subscribe(msg.payload.session.id);
+        } else if (msgType === 'notification') {
+          const subType = msg.payload.subscription && msg.payload.subscription.type;
+          const event   = msg.payload.event;
+          if (!subType || !event) return;
+          const mapped = eventToVars(subType, event);
+          if (mapped) enqueue(mapped.eventKey, mapped.vars);
+        }
+      });
+      ws.addEventListener('close', () => {
+        if (myGen !== wsGen) return;
+        const delay = Math.min(60000, 5000 * Math.pow(1.5, reconnectAttempts)) + Math.random() * 1000;
+        reconnectAttempts++;
+        setTimeout(() => { if (!authBlocked) connectWS(); }, delay);
+      });
+    }
+
+    // ── Test poll ────────────────────────────────────────────────────────────
+    function pollTest() {
+      const raw = localStorage.getItem(TEST_KEY);
+      if (!raw || raw === lastTestVal) return;
+      lastTestVal = raw;
+      localStorage.removeItem(TEST_KEY);
+
+      let payload;
+      try { payload = JSON.parse(raw); } catch(e) { return; }
+
+      const key = payload.event;
+      if (!key) return;
+      if (!config || !config.events || !config.events[key]) return;
+
+      // build vars from test payload
+      const vars = {
+        user: payload.user || 'TestUser',
+        amount: payload.amount || 100,
+        viewers: payload.viewers || 42,
+        months: payload.months || 6,
+        tier: tierLabel(payload.tier || '1000'),
+        recipient: payload.recipient || 'AnotherUser',
+        message: payload.message || 'Love the stream!',
+      };
+      enqueue(key, vars);
+    }
+
+    // ── Init ─────────────────────────────────────────────────────────────────
+    async function init() {
+      loadData();
+
+      if (!tokenData || !tokenData.access_token) {
+        showStatus('⚠ Not connected — configure in Alerts tool');
+        return;
+      }
+
+      // verify token
+      try {
+        const resp = await fetch('https://api.twitch.tv/helix/users', {
+          headers: {
+            'Authorization': `Bearer ${tokenData.access_token}`,
+            'Client-Id': tokenData.client_id,
+          },
+        });
+        if (resp.status === 401) {
+          showStatus('⚠ Token expired — reconnect in Alerts tool');
+          return;
+        }
+        if (!resp.ok) throw new Error('Unexpected status ' + resp.status);
+        const data = await resp.json();
+        // update broadcaster_id in case it changed
+        if (data.data && data.data[0]) {
+          tokenData.broadcaster_id = data.data[0].id;
+        }
+      } catch(err) {
+        showStatus('⚠ Could not verify Twitch token');
+        return;
+      }
+
+      // start EventSub WebSocket
+      connectWS();
+
+      // poll for test alerts
+      setInterval(pollTest, 500);
+
+      // periodic token re-verification (every 5 min)
+      if (window.__alertsHeartbeat) clearInterval(window.__alertsHeartbeat);
+      window.__alertsHeartbeat = setInterval(async () => {
+        if (authBlocked || !tokenData || !tokenData.access_token) return;
+        try {
+          const resp = await fetch('https://api.twitch.tv/helix/users', {
+            headers: {
+              'Authorization': `Bearer ${tokenData.access_token}`,
+              'Client-Id': tokenData.client_id,
+            },
+          });
+          if (resp.status === 401) {
+            authBlocked = true;
+            showStatus('⚠ Token expired — reconnect in Alerts tool');
+            try { ws && ws.close(); } catch(e) {}
+          }
+        } catch(e) { /* network blip — ignore */ }
+      }, 5 * 60 * 1000);
+    }
+
+    init();
+  </script>
+</body>
+</html>

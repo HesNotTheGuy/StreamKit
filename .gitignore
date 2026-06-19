@@ -1,0 +1,52 @@
+# ── Dependencies ──────────────────────────────────────────
+node_modules/
+
+# ── Rust / Tauri build artifacts ──────────────────────────
+src-tauri/target/
+dist/
+
+# ── Local dev tools (Claude Code settings, session data) ──
+.claude/
+
+# ── Environment / secrets ─────────────────────────────────
+.env
+.env.local
+.env.*.local
+
+# ── OS junk ───────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+.directory
+
+# ── Editor artifacts ──────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ── User sound files (drop your own into assets/sounds/) ──
+assets/sounds/*
+!assets/sounds/.gitkeep
+
+# ── Build outputs ─────────────────────────────────────────
+*.exe
+*.msi
+*.dmg
+*.AppImage
+*.deb
+
+# ── Signing keys / certs (Tauri updater, code signing) ────
+*.key
+*.pem
+*.pfx
+*.p12
+*.keystore
+*.jks
+.tauri/
+
+# ── Logs / local / backup files ───────────────────────────
+*.log
+*.local
+*.bak

@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>W/L Tracker — StreamKit</title>
+  <link rel="stylesheet" href="../../../assets/styles/dashboard.css">
+  <script src="../../../assets/js/util.js"></script>
+  <style>
+    body { padding: 24px; max-width: 520px; }
+
+    .tool-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+
+    .game-input { font-size: 17px; padding: 12px 16px; margin-bottom: 20px; }
+
+    .record-card {
+      text-align: center;
+      padding: 36px 20px 28px;
+      margin-bottom: 20px;
+      position: relative;
+    }
+    .record-numbers {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      margin-bottom: 16px;
+    }
+    .rn-num {
+      font-size: 64px;
+      font-weight: 800;
+      line-height: 1;
+      min-width: 70px;
+      text-align: center;
+    }
+    .rn-label { font-size: 28px; font-weight: 700; color: var(--muted); }
+    .rn-sep   { font-size: 36px; color: var(--border); margin: 0 4px; }
+    .rn-wins   { color: var(--green); }
+    .rn-losses { color: var(--red); }
+    .rn-draws  { color: var(--yellow); }
+
+    .record-stats {
+      display: flex;
+      justify-content: center;
+      gap: 28px;
+      font-size: 15px;
+      color: var(--muted);
+    }
+    .record-stats strong { color: var(--text); }
+
+    .streak-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 14px;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: 700;
+    }
+    .streak-win  { background: rgba(46,204,113,0.15); color: var(--green); border: 1px solid rgba(46,204,113,0.3); }
+    .streak-loss { background: rgba(231,76,60,0.15);  color: var(--red);   border: 1px solid rgba(231,76,60,0.3); }
+    .streak-draw { background: rgba(240,165,0,0.15);  color: var(--yellow);border: 1px solid rgba(240,165,0,0.3); }
+
+    .action-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .action-row .btn { padding: 22px 10px; font-size: 19px; width: 100%; }
+
+    .footer-row { display: flex; justify-content: space-between; align-items: center; }
+
+    .undo-btn { color: var(--muted); font-size: 13px; }
+    .undo-btn:disabled { opacity: 0.3; }
+
+    /* history flash */
+    .record-card.added { animation: pulse-green 0.4s ease; }
+  </style>
+</head>
+<body>
+  <div class="tool-header">
+    <h1>W/L Tracker</h1>
+    <span id="totalGames" style="color:var(--muted);font-size:14px;"></span>
+  </div>
+
+  <input type="text" class="game-input" id="gameName" placeholder="Game / Session name (optional)" maxlength="50">
+
+  <div class="card record-card" id="recordCard">
+    <div class="record-numbers">
+      <span class="rn-num rn-wins" id="wDisplay">0</span><span class="rn-label rn-wins">W</span>
+      <span class="rn-sep">/</span>
+      <span class="rn-num rn-losses" id="lDisplay">0</span><span class="rn-label rn-losses">L</span>
+      <span class="rn-sep">/</span>
+      <span class="rn-num rn-draws" id="dDisplay">0</span><span class="rn-label rn-draws">D</span>
+    </div>
+    <div class="record-stats">
+      <div>Win Rate: <strong id="winRate">—</strong></div>
+      <div id="streakWrap"></div>
+    </div>
+  </div>
+
+  <div class="action-row">
+    <button class="btn btn-win"  onclick="addResult('win')">+WIN</button>
+    <button class="btn btn-loss" onclick="addResult('loss')">+LOSS</button>
+    <button class="btn btn-draw" onclick="addResult('draw')">+DRAW</button>
+  </div>
+
+  <div class="footer-row">
+    <button class="btn btn-ghost btn-sm undo-btn" id="undoBtn" onclick="undo()">↩ Undo</button>
+    <button class="btn btn-ghost btn-sm" onclick="resetSession()">RESET SESSION</button>
+  </div>
+
+  <script>
+    const KEY = 'streamkit_wl_record';
+
+    const defaults = { wins:0, losses:0, draws:0, streak:0, streakType:null, game:'', history:[] };
+    let state = { ...defaults };
+
+    function load() {
+      try {
+        const s = localStorage.getItem(KEY);
+        if (s) state = { ...defaults, ...JSON.parse(s) };
+      } catch(e) {}
+      document.getElementById('gameName').value = state.game || '';
+      render();
+    }
+
+    function save() {
+      state.game = document.getElementById('gameName').value.trim();
+      localStorage.setItem(KEY, JSON.stringify(state));
+    }
+
+    function addResult(type) {
+      state.history = state.history || [];
+      state.history.push({ type, wins: state.wins, losses: state.losses, draws: state.draws, streak: state.streak, streakType: state.streakType });
+      if (state.history.length > 50) state.history.shift();
+
+      if (type === 'win')  state.wins++;
+      else if (type === 'loss') state.losses++;
+      else state.draws++;
+
+      if (state.streakType === type) state.streak++;
+      else { state.streak = 1; state.streakType = type; }
+
+      save();
+      render();
+
+      const card = document.getElementById('recordCard');
+      card.classList.remove('added');
+      void card.offsetWidth;
+      card.classList.add('added');
+    }
+
+    function undo() {
+      const h = state.history || [];
+      if (!h.length) return;
+      const prev = h.pop();
+      state.wins = prev.wins; state.losses = prev.losses; state.draws = prev.draws;
+      state.streak = prev.streak; state.streakType = prev.streakType;
+      save();
+      render();
+    }
+
+    function resetSession() {
+      if (!confirm('Reset the session? This clears all wins, losses, and draws.')) return;
+      state = { ...defaults, game: state.game };
+      save();
+      render();
+    }
+
+    function render() {
+      document.getElementById('wDisplay').textContent = state.wins;
+      document.getElementById('lDisplay').textContent = state.losses;
+      document.getElementById('dDisplay').textContent = state.draws;
+
+      const total = state.wins + state.losses;
+      const wr = total > 0 ? Math.round((state.wins / total) * 100) + '%' : '—';
+      document.getElementById('winRate').textContent = wr;
+
+      const totalAll = state.wins + state.losses + state.draws;
+      document.getElementById('totalGames').textContent = totalAll > 0 ? totalAll + ' games' : '';
+
+      const sw = document.getElementById('streakWrap');
+      if (state.streak > 1 && state.streakType) {
+        const cls = { win:'streak-win', loss:'streak-loss', draw:'streak-draw' };
+        const lbl = { win:'W Streak', loss:'L Streak', draw:'D Streak' };
+        sw.innerHTML = `<span class="streak-pill ${cls[state.streakType]}">${state.streak} ${lbl[state.streakType]}</span>`;
+      } else { sw.innerHTML = ''; }
+
+      document.getElementById('undoBtn').disabled = !(state.history && state.history.length);
+    }
+
+    document.getElementById('gameName').addEventListener('input', save);
+    load();
+  </script>
+
+  <!-- ══════════════════════════════════════════
+       OVERLAY STYLE PANEL
+  ══════════════════════════════════════════ -->
+  <style>
+    /* ── Option grids (layout / background / size) ── */
+    .opt-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .opt-card {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 10px 6px 8px; gap: 4px;
+      background: var(--bg3); border: 2px solid var(--border);
+      border-radius: 8px; cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+      user-select: none;
+    }
+    .opt-card:hover { border-color: rgba(124,106,247,0.4); }
+    .opt-card.active { border-color: var(--accent); background: rgba(124,106,247,0.1); }
+    .opt-icon  { font-size: 18px; line-height: 1; }
+    .opt-label { font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+    .opt-card.active .opt-label { color: var(--text); }
+
+    /* ── Preview box ── */
+    .style-preview-box {
+      padding: 12px 14px; border-radius: 8px;
+      display: inline-flex; flex-direction: column; gap: 6px;
+      min-height: 52px; transition: background 0.2s, border-color 0.2s;
+    }
+    .pv-bg-none  { background: rgba(0,0,0,0.45); border: 1px solid color-mix(in srgb, var(--chrome, #7c6af7) 20%, transparent); }
+    .pv-bg-glass { background: rgba(0,0,0,0.55); border: 1px solid color-mix(in srgb, var(--chrome, #7c6af7) 35%, transparent); }
+    .pv-bg-solid { background: rgba(12,12,12,0.96); border: 1px solid color-mix(in srgb, var(--chrome, #7c6af7) 22%, transparent); }
+    .prev-stats { font-size: 12px; color: color-mix(in srgb, var(--chrome, #7c6af7) 30%, rgba(255,255,255,0.75)); font-weight: 600; }
+    /* pill layout preview */
+    .pv-pill { display: flex; align-items: center; border: 1px solid color-mix(in srgb, var(--chrome, #7c6af7) 45%, transparent); border-radius: 999px; overflow: hidden; background: rgba(0,0,0,0.3); }
+    .pv-pill-seg { font-weight: 800; padding: 4px 10px; line-height: 1; }
+    .pv-pill-sep { width: 1px; background: color-mix(in srgb, var(--chrome, #7c6af7) 45%, transparent); align-self: stretch; }
+
+    .preview-hint { font-size: 11px; color: var(--muted); margin-top: 8px; }
+  </style>
+
+  <button class="style-toggle-btn" id="styleToggle" onclick="toggleStylePanel()">
+    🎨 Overlay Style <span class="st-arrow">▼</span>
+  </button>
+  <div class="style-panel" id="stylePanel">
+    <div class="style-section">
+      <div class="style-section-label">Font</div>
+      <div class="font-grid" id="fontGrid"></div>
+    </div>
+    <div class="style-section">
+      <div class="style-section-label">Layout</div>
+      <div class="opt-grid" id="layoutGrid"></div>
+    </div>
+    <div class="style-section">
+      <div class="style-section-label">Background</div>
+      <div class="opt-grid" id="bgGrid"></div>
+    </div>
+    <div class="style-section">
+      <div class="style-section-label">Size</div>
+      <div class="opt-grid" id="sizeGrid"></div>
+    </div>
+    <div class="style-section">
+      <div class="style-section-label">Text Effect</div>
+      <div class="opt-grid" id="effectGrid"></div>
+    </div>
+    <div class="style-section">
+      <div class="style-section-label">Colors</div>
+      <div class="color-row">
+        <div class="color-swatch"><label>Win</label>
+          <input type="color" id="colorW" value="#2ecc71" oninput="saveOvStyle()"></div>
+        <div class="color-swatch"><label>Loss</label>
+          <input type="color" id="colorL" value="#e74c3c" oninput="saveOvStyle()"></div>
+        <div class="color-swatch"><label>Draw</label>
+          <input type="color" id="colorD" value="#f0a500" oninput="saveOvStyle()"></div>
+        <div class="color-swatch"><label title="Box border, separators &amp; labels">Accent</label>
+          <input type="color" id="chromeColor" value="#7c6af7" oninput="saveOvStyle()" title="Box border, separators &amp; labels"></div>
+      </div>
+    </div>
+    <div class="style-section">
+      <div class="style-section-label">Display Options</div>
+      <div class="toggle-grid">
+        <div class="toggle-row">Show Draws
+          <label class="toggle-switch"><input type="checkbox" id="showDraws" checked onchange="saveOvStyle()"><span class="toggle-track"></span></label>
+        </div>
+        <div class="toggle-row">Show Win Rate
+          <label class="toggle-switch"><input type="checkbox" id="showWinRate" checked onchange="saveOvStyle()"><span class="toggle-track"></span></label>
+        </div>
+        <div class="toggle-row">Show Streak
+          <label class="toggle-switch"><input type="checkbox" id="showStreak" checked onchange="saveOvStyle()"><span class="toggle-track"></span></label>
+        </div>
+      </div>
+    </div>
+    <div class="style-section">
+      <div class="style-section-label">Preview</div>
+      <div class="style-preview-box pv-bg-none" id="previewBox"></div>
+      <div class="preview-hint">Changes appear in the OBS overlay within 2 seconds.</div>
+      <div class="obs-link-row">
+        <button class="btn-copy-obs" id="copyOBSBtn" onclick="copyOBSLink()">📋 Copy OBS Browser Source URL</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const OV_KEY  = 'streamkit_overlay_wl';
+    const OV_DEFS = {
+      font: 'system', colorW: '#2ecc71', colorL: '#e74c3c', colorD: '#f0a500',
+      showDraws: true, showWinRate: true, showStreak: true,
+      layout: 'horizontal', background: 'none', size: 'md',
+      effect: 'none', chromeColor: '#7c6af7',
+    };
+
+    const LAYOUTS = [
+      { id: 'horizontal', label: 'Horizontal', icon: '↔' },
+      { id: 'pill',       label: 'Pill',       icon: '⬭' },
+      { id: 'vertical',   label: 'Vertical',   icon: '↕' },
+    ];
+    const BACKGROUNDS = [
+      { id: 'none',  label: 'Transparent', icon: '◇' },
+      { id: 'glass', label: 'Glass',       icon: '▣' },
+      { id: 'solid', label: 'Solid',       icon: '■' },
+    ];
+    const SIZES = [
+      { id: 'sm', label: 'Small',  icon: 'S' },
+      { id: 'md', label: 'Medium', icon: 'M' },
+      { id: 'lg', label: 'Large',  icon: 'L' },
+    ];
+    const EFFECTS = [
+      { id: 'none',    label: 'Plain',   icon: 'A' },
+      { id: 'glow',    label: 'Glow',    icon: '✦' },
+      { id: 'outline', label: 'Outline', icon: '⬡' },
+    ];
+
+    let currentOvFont   = 'system';
+    let currentLayout   = 'horizontal';
+    let currentBg       = 'none';
+    let currentSize     = 'md';
+    let currentEffect   = 'none';
+    let currentChrome   = '#7c6af7';
+
+    function getOvStyle() {
+      try { return { ...OV_DEFS, ...JSON.parse(localStorage.getItem(OV_KEY)) }; }
+      catch(e) { return { ...OV_DEFS }; }
+    }
+
+    function saveOvStyle() {
+      const s = {
+        font:        currentOvFont,
+        layout:      currentLayout,
+        background:  currentBg,
+        size:        currentSize,
+        effect:      currentEffect,
+        chromeColor: document.getElementById('chromeColor').value,
+        colorW:      document.getElementById('colorW').value,
+        colorL:      document.getElementById('colorL').value,
+        colorD:      document.getElementById('colorD').value,
+        showDraws:   document.getElementById('showDraws').checked,
+        showWinRate: document.getElementById('showWinRate').checked,
+        showStreak:  document.getElementById('showStreak').checked,
+      };
+      localStorage.setItem(OV_KEY, JSON.stringify(s));
+      updatePreview(s);
+    }
+
+    // Build inline style string for a number element
+    function pvNumStyle(color, effect, fontSize) {
+      let ts = '';
+      if (effect === 'glow') {
+        ts = `;text-shadow:0 0 14px ${color},0 0 28px ${color}88`;
+      } else if (effect === 'outline') {
+        ts = `;-webkit-text-stroke:2px rgba(0,0,0,0.85);text-shadow:none`;
+      }
+      return `font-size:${fontSize}px;font-weight:800;color:${color}${ts}`;
+    }
+
+    function updatePreview(s) {
+      const f      = StreamKit.FONTS.find(f => f.id === s.font) || StreamKit.FONTS[0];
+      const box    = document.getElementById('previewBox');
+      const showD  = s.showDraws !== false;
+      const eff    = s.effect || 'none';
+      const chrome = s.chromeColor || '#7c6af7';
+      const cW = s.colorW, cL = s.colorL, cD = s.colorD;
+
+      box.className    = 'style-preview-box pv-bg-' + (s.background || 'none');
+      box.style.fontFamily = f.css;
+      box.style.setProperty('--chrome', chrome);
+
+      const parts = [];
+      if (s.showWinRate !== false) parts.push('63% WR');
+      if (s.showStreak  !== false) parts.push('2W Streak');
+      const statsHtml = parts.length ? `<div class="prev-stats">${parts.join(' · ')}</div>` : '';
+
+      // Scale numbers for the small preview box
+      const base = s.size === 'sm' ? 18 : s.size === 'lg' ? 32 : 24;
+      const sep  = Math.round(base * 0.6);
+      const lbl  = Math.round(base * 0.42);
+
+      const sepStyle = `font-size:${sep}px;color:var(--chrome);opacity:0.55`;
+      const lblStyle = `font-size:${lbl}px;color:var(--chrome);opacity:0.7;font-weight:600;text-transform:uppercase`;
+
+      if (s.layout === 'pill') {
+        const drawHtml = showD
+          ? `<span class="pv-pill-sep"></span><span style="${pvNumStyle(cD,eff,base)}">1D</span>`
+          : '';
+        box.innerHTML = `
+          <div class="pv-pill">
+            <span style="${pvNumStyle(cW,eff,base)};padding:4px 10px">5W</span>
+            <span class="pv-pill-sep"></span>
+            <span style="${pvNumStyle(cL,eff,base)};padding:4px 10px">3L</span>
+            ${drawHtml}
+          </div>${statsHtml}`;
+
+      } else if (s.layout === 'vertical') {
+        const drawHtml = showD
+          ? `<div style="display:flex;align-items:baseline;gap:5px"><span style="${pvNumStyle(cD,eff,base)}">1</span><span style="${lblStyle}">Draws</span></div>`
+          : '';
+        box.innerHTML = `
+          <div style="display:flex;flex-direction:column;gap:2px">
+            <div style="display:flex;align-items:baseline;gap:5px"><span style="${pvNumStyle(cW,eff,base)}">5</span><span style="${lblStyle}">Wins</span></div>
+            <div style="display:flex;align-items:baseline;gap:5px"><span style="${pvNumStyle(cL,eff,base)}">3</span><span style="${lblStyle}">Losses</span></div>
+            ${drawHtml}
+          </div>${statsHtml}`;
+
+      } else {
+        const drawHtml = showD
+          ? `<span style="${sepStyle}">/</span><span style="${pvNumStyle(cD,eff,base)}">1D</span>`
+          : '';
+        box.innerHTML = `
+          <div style="display:flex;align-items:baseline;gap:5px;line-height:1">
+            <span style="${pvNumStyle(cW,eff,base)}">5W</span>
+            <span style="${sepStyle}">/</span>
+            <span style="${pvNumStyle(cL,eff,base)}">3L</span>
+            ${drawHtml}
+          </div>${statsHtml}`;
+      }
+    }
+
+    function selectOvFont(id) {
+      currentOvFont = id;
+      document.querySelectorAll('#fontGrid .font-card').forEach(c =>
+        c.classList.toggle('active', c.dataset.fid === id));
+      saveOvStyle();
+    }
+
+    function buildOptGrid(containerId, items, getCurrent, setCurrent) {
+      const grid = document.getElementById(containerId);
+      grid.innerHTML = '';
+      items.forEach(item => {
+        const card = document.createElement('div');
+        card.className = 'opt-card' + (item.id === getCurrent() ? ' active' : '');
+        card.dataset.oid = item.id;
+        card.onclick = () => {
+          setCurrent(item.id);
+          grid.querySelectorAll('.opt-card').forEach(c =>
+            c.classList.toggle('active', c.dataset.oid === item.id));
+          saveOvStyle();
+        };
+        card.innerHTML = `<span class="opt-icon">${item.icon}</span><span class="opt-label">${item.label}</span>`;
+        grid.appendChild(card);
+      });
+    }
+
+    function buildFontGrid() {
+      const grid = document.getElementById('fontGrid');
+      grid.innerHTML = '';
+      StreamKit.FONTS.forEach(f => {
+        const card = document.createElement('div');
+        card.className = 'font-card' + (f.id === currentOvFont ? ' active' : '');
+        card.dataset.fid = f.id;
+        card.onclick = () => selectOvFont(f.id);
+        const licCls = StreamKit.licenseClass(f.license);
+        card.innerHTML = `<span class="font-sample" style="font-family:${f.css}">Aa</span><span class="font-name">${f.label}</span><span class="font-license ${licCls}">${f.license}</span>`;
+        grid.appendChild(card);
+      });
+    }
+
+    function loadOvStyle() {
+      const s = getOvStyle();
+      currentOvFont = s.font        || 'system';
+      currentLayout = s.layout      || 'horizontal';
+      currentBg     = s.background  || 'none';
+      currentSize   = s.size        || 'md';
+      currentEffect = s.effect      || 'none';
+      currentChrome = s.chromeColor || '#7c6af7';
+      document.getElementById('colorW').value      = s.colorW      || '#2ecc71';
+      document.getElementById('colorL').value      = s.colorL      || '#e74c3c';
+      document.getElementById('colorD').value      = s.colorD      || '#f0a500';
+      document.getElementById('chromeColor').value = s.chromeColor || '#7c6af7';
+      document.getElementById('showDraws').checked   = s.showDraws  !== false;
+      document.getElementById('showWinRate').checked = s.showWinRate !== false;
+      document.getElementById('showStreak').checked  = s.showStreak  !== false;
+      buildFontGrid();
+      buildOptGrid('layoutGrid', LAYOUTS,     () => currentLayout, id => { currentLayout = id; });
+      buildOptGrid('bgGrid',     BACKGROUNDS, () => currentBg,     id => { currentBg     = id; });
+      buildOptGrid('sizeGrid',   SIZES,       () => currentSize,   id => { currentSize   = id; });
+      buildOptGrid('effectGrid', EFFECTS,     () => currentEffect, id => { currentEffect = id; });
+      updatePreview(s);
+    }
+
+    function toggleStylePanel() {
+      const open = document.getElementById('stylePanel').classList.toggle('open');
+      document.getElementById('styleToggle').classList.toggle('open', open);
+    }
+    loadOvStyle();
+  </script>
+</body>
+</html>

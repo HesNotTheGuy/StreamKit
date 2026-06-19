@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stream Info — StreamKit</title>
+  <link rel="stylesheet" href="../../../assets/styles/dashboard.css">
+  <script src="../../../assets/js/util.js"></script>
+  <style>
+    body { padding: 20px; }
+
+    .tool-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+
+    /* Not-connected state */
+    .no-auth {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      padding: 60px 20px;
+      gap: 14px;
+      color: var(--muted);
+    }
+    .no-auth.show { display: flex; }
+    .no-auth h3 { color: var(--text); font-size: 18px; }
+    .no-auth p { font-size: 14px; max-width: 360px; line-height: 1.6; }
+
+    /* Scope error */
+    .scope-warning {
+      display: none;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 16px;
+      background: rgba(240,165,0,0.1);
+      border: 1px solid rgba(240,165,0,0.3);
+      border-radius: 10px;
+      margin-bottom: 20px;
+    }
+    .scope-warning.show { display: flex; }
+    .scope-warning-icon { font-size: 20px; flex-shrink: 0; }
+    .scope-warning p { font-size: 13px; color: #f0c060; line-height: 1.5; margin: 0; flex: 1; }
+
+    /* Live status banner */
+    .live-banner {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      background: rgba(231,76,60,0.08);
+      border: 1px solid rgba(231,76,60,0.25);
+      border-radius: 8px;
+      margin-bottom: 16px;
+      font-size: 13px;
+    }
+    .live-banner.show { display: flex; }
+    .live-dot-sm {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--red);
+      animation: pulse-live-sm 1.4s ease infinite;
+      flex-shrink: 0;
+    }
+    @keyframes pulse-live-sm {
+      0%,100% { box-shadow: 0 0 0 0 rgba(231,76,60,0.4); }
+      50%      { box-shadow: 0 0 0 5px rgba(231,76,60,0); }
+    }
+    .live-banner-text { flex: 1; color: var(--text); font-weight: 600; }
+    .live-banner-meta { color: var(--muted); }
+
+    /* Main form */
+    .info-form {
+      display: flex; flex-direction: column; gap: 16px;
+    }
+
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-label {
+      font-size: 12px; font-weight: 700; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.8px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .char-badge {
+      margin-left: auto;
+      font-size: 11px; font-weight: 600; color: var(--muted);
+      text-transform: none; letter-spacing: 0;
+    }
+    .char-badge.warn { color: var(--yellow, #f0a500); }
+    .char-badge.over { color: var(--red); }
+
+    .title-input {
+      width: 100%;
+      font-size: 15px;
+      padding: 12px 14px;
+    }
+
+    /* Game search */
+    .game-search-wrap { position: relative; }
+    .game-search-wrap input { width: 100%; }
+    .game-results {
+      display: none;
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0; right: 0;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      z-index: 20;
+      max-height: 240px;
+      overflow-y: auto;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    }
+    .game-results.open { display: block; }
+    .game-result-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 9px 12px;
+      cursor: pointer;
+      transition: background 0.1s;
+      border-bottom: 1px solid var(--border);
+    }
+    .game-result-item:last-child { border-bottom: none; }
+    .game-result-item:hover { background: var(--bg3); }
+    .game-thumb {
+      width: 30px; height: 40px;
+      border-radius: 4px;
+      object-fit: cover;
+      background: var(--bg3);
+      flex-shrink: 0;
+    }
+    .game-name { font-size: 14px; font-weight: 600; }
+    .game-searching { padding: 12px; color: var(--muted); font-size: 13px; text-align: center; }
+
+    /* Selected game display */
+    .game-selected {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      background: var(--bg2);
+      border: 1px solid rgba(124,106,247,0.3);
+      border-radius: 8px;
+    }
+    .game-selected.show { display: flex; }
+    .game-selected-name { flex: 1; font-size: 14px; font-weight: 700; }
+    .game-clear {
+      background: none; border: none; color: var(--muted);
+      cursor: pointer; font-size: 18px; padding: 0 2px; line-height: 1;
+    }
+    .game-clear:hover { color: var(--red); }
+
+    /* Tags */
+    .tags-input-wrap {
+      display: flex; flex-wrap: wrap; gap: 6px;
+      padding: 8px 12px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      cursor: text;
+      min-height: 44px;
+      align-items: center;
+      transition: border-color 0.15s;
+    }
+    .tags-input-wrap:focus-within { border-color: var(--accent); }
+    .tag-pill {
+      display: flex; align-items: center; gap: 5px;
+      padding: 3px 10px;
+      background: rgba(124,106,247,0.15);
+      border: 1px solid rgba(124,106,247,0.3);
+      border-radius: 20px;
+      font-size: 13px; color: var(--accent); font-weight: 600;
+    }
+    .tag-pill-del {
+      background: none; border: none; color: var(--accent);
+      cursor: pointer; font-size: 15px; padding: 0; line-height: 1; opacity: 0.7;
+    }
+    .tag-pill-del:hover { opacity: 1; }
+    .tags-text-input {
+      border: none; outline: none;
+      background: transparent;
+      color: var(--text);
+      font-size: 14px; font-family: inherit;
+      min-width: 120px; flex: 1;
+    }
+    .tag-hint { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+    /* Preset tags */
+    .preset-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+    .preset-tag {
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 12px; font-weight: 600;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      background: var(--bg3);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .preset-tag:hover { border-color: var(--accent); color: var(--accent); background: rgba(124,106,247,0.08); }
+
+    /* Action row */
+    .action-row {
+      display: flex; align-items: center; gap: 10px;
+      margin-top: 4px;
+    }
+    .update-btn { flex: 1; }
+
+    /* Feedback */
+    .feedback {
+      display: none;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      margin-top: 8px;
+    }
+    .feedback.show { display: flex; }
+    .feedback.success { background: rgba(46,204,113,0.1); border: 1px solid rgba(46,204,113,0.3); color: var(--green); }
+    .feedback.error   { background: rgba(231,76,60,0.1);  border: 1px solid rgba(231,76,60,0.3);  color: var(--red); }
+
+    /* Recent titles */
+    .recents-section { margin-top: 8px; }
+    .recents-label { font-size: 12px; color: var(--muted); margin-bottom: 6px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; }
+    .recent-titles { display: flex; flex-direction: column; gap: 4px; }
+    .recent-title {
+      display: flex; align-items: center; gap: 8px;
+      padding: 7px 10px;
+      background: var(--bg3);
+      border-radius: 6px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: background 0.1s;
+      color: var(--muted);
+    }
+    .recent-title:hover { background: rgba(124,106,247,0.1); color: var(--text); }
+    .recent-title .rt-arrow { margin-left: auto; opacity: 0; transition: opacity 0.15s; font-size: 11px; }
+    .recent-title:hover .rt-arrow { opacity: 1; }
+  </style>
+</head>
+<body>
+
+  <!-- Not connected -->
+  <div class="no-auth" id="noAuth">
+    <div style="font-size:44px">🟣</div>
+    <h3>Twitch not connected</h3>
+    <p>Connect Twitch from the sidebar to update your stream title, category, and tags without leaving StreamKit.</p>
+  </div>
+
+  <!-- Scope warning (shown if token lacks channel:manage:broadcast) -->
+  <div class="scope-warning" id="scopeWarning">
+    <span class="scope-warning-icon">⚠️</span>
+    <p>
+      Your Twitch token needs the <strong>channel:manage:broadcast</strong> permission to edit stream info.
+      <br>Disconnect and reconnect Twitch from the sidebar to upgrade your token.
+    </p>
+  </div>
+
+  <!-- Live banner -->
+  <div class="live-banner" id="liveBanner">
+    <div class="live-dot-sm"></div>
+    <span class="live-banner-text">You're live</span>
+    <span class="live-banner-meta" id="liveViewers"></span>
+  </div>
+
+  <!-- Form -->
+  <div id="mainForm">
+    <div class="tool-header">
+      <h1>Stream Info</h1>
+      <button class="btn btn-ghost btn-sm" onclick="refreshFromAPI()" id="refreshBtn">↻ Refresh</button>
+    </div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:20px">
+      Update your stream title, category, and tags — changes go live instantly on Twitch.
+    </div>
+
+    <div class="info-form">
+
+      <!-- Title -->
+      <div class="form-group">
+        <div class="form-label">
+          Stream Title
+          <span class="char-badge" id="titleCharBadge">0 / 140</span>
+        </div>
+        <input type="text" id="titleInput" class="title-input" maxlength="140"
+          placeholder="What are you streaming today?">
+
+        <!-- Recent titles -->
+        <div class="recents-section" id="recentsSection" style="display:none">
+          <div class="recents-label">Recent Titles</div>
+          <div class="recent-titles" id="recentTitlesList"></div>
+        </div>
+      </div>
+
+      <!-- Category / Game -->
+      <div class="form-group">
+        <div class="form-label">Category / Game</div>
+        <!-- Selected game chip -->
+        <div class="game-selected" id="gameSelected">
+          <img class="game-thumb" id="gameThumb" src="" alt="">
+          <span class="game-selected-name" id="gameSelectedName"></span>
+          <button class="game-clear" onclick="clearGame()" title="Change game">×</button>
+        </div>
+        <!-- Search -->
+        <div class="game-search-wrap" id="gameSearchWrap">
+          <input type="text" id="gameSearch" placeholder="Search categories…" autocomplete="off" spellcheck="false">
+          <div class="game-results" id="gameResults"></div>
+        </div>
+      </div>
+
+      <!-- Tags -->
+      <div class="form-group">
+        <div class="form-label">Tags <span style="font-weight:400;font-size:11px;text-transform:none;letter-spacing:0;color:var(--muted)">(up to 10, press Enter or comma to add)</span></div>
+        <div class="tags-input-wrap" id="tagsWrap" onclick="document.getElementById('tagInput').focus()">
+          <!-- tag pills rendered here -->
+          <input type="text" id="tagInput" class="tags-text-input" placeholder="Add tag…" maxlength="25" autocomplete="off">
+        </div>
+        <div class="preset-tags" id="presetTagsRow"></div>
+        <div class="tag-hint">Tags help viewers find your stream. Max 25 chars each.</div>
+      </div>
+
+      <!-- Action row -->
+      <div class="action-row">
+        <button class="btn btn-primary btn-lg update-btn" id="updateBtn" onclick="updateStream()">
+          ✓ Update Stream Info
+        </button>
+      </div>
+
+      <div class="feedback" id="feedback"></div>
+
+    </div>
+  </div>
+
+  <script>
+    const RECENT_KEY = 'streamkit_recent_titles';
+    const MAX_RECENT = 8;
+
+    // Preset tags common for streamers
+    const PRESET_TAGS = [
+      'English', 'Competitive', 'Chill', 'Speedrunning', 'FPS', 'RPG',
+      'Variety', 'New Streamer', 'Interactive', 'Story Rich',
+    ];
+
+    let selectedGameId   = '';
+    let selectedGameName = '';
+    let currentTags      = [];
+    let gameSearchTimer  = null;
+    let isUpdating       = false;
+
+    // ── Twitch helpers ──
+    function getTwitchToken()    { return localStorage.getItem('streamkit_twitch_token'); }
+    function getTwitchUser()     { try { return JSON.parse(localStorage.getItem('streamkit_twitch_user')); } catch(e) { return null; } }
+    function getTwitchClientId() { return localStorage.getItem('streamkit_twitch_client_id'); }
+
+    async function twitchFetch(path, opts = {}) {
+      const token    = getTwitchToken();
+      const clientId = getTwitchClientId();
+      if (!token || !clientId) return { ok: false, status: 401, data: null };
+      try {
+        const res = await fetch('https://api.twitch.tv/helix' + path, {
+          ...opts,
+          headers: {
+            'Authorization': 'Bearer ' + token,
+            'Client-Id': clientId,
+            'Content-Type': 'application/json',
+            ...(opts.headers || {}),
+          },
+        });
+        const data = res.status === 204 ? null : await res.json().catch(() => null);
+        return { ok: res.ok, status: res.status, data };
+      } catch(e) {
+        return { ok: false, status: 0, data: null };
+      }
+    }
+
+    // ── Init ──
+    async function init() {
+      const user = getTwitchUser();
+      if (!user) {
+        document.getElementById('noAuth').classList.add('show');
+        document.getElementById('mainForm').style.display = 'none';
+        return;
+      }
+
+      // Load live status
+      const streamStatus = (() => { try { return JSON.parse(localStorage.getItem('streamkit_stream_status')); } catch(e) { return null; } })();
+      if (streamStatus && streamStatus.isLive && streamStatus.stream) {
+        const s = streamStatus.stream;
+        const el = document.getElementById('liveBanner');
+        el.classList.add('show');
+        const v = s.viewer_count >= 1000 ? (s.viewer_count / 1000).toFixed(1) + 'K' : s.viewer_count;
+        document.getElementById('liveViewers').textContent = v + ' viewers';
+        document.getElementById('liveBanner').querySelector('.live-banner-text').textContent =
+          'You\'re live — ' + esc(s.game_name || 'No category');
+      }
+
+      // Build preset tags
+      const presetRow = document.getElementById('presetTagsRow');
+      PRESET_TAGS.forEach(t => {
+        const btn = document.createElement('span');
+        btn.className = 'preset-tag';
+        btn.textContent = t;
+        btn.onclick = () => addTag(t);
+        presetRow.appendChild(btn);
+      });
+
+      // Load recent titles
+      renderRecents();
+
+      // Fetch current channel info
+      await refreshFromAPI();
+
+      // Wire events
+      document.getElementById('titleInput').addEventListener('input', onTitleInput);
+      document.getElementById('gameSearch').addEventListener('input', onGameSearch);
+      document.getElementById('tagInput').addEventListener('keydown', onTagKeydown);
+
+      // Close game results on outside click
+      document.addEventListener('click', e => {
+        if (!document.getElementById('gameSearchWrap').contains(e.target)) {
+          document.getElementById('gameResults').classList.remove('open');
+        }
+      });
+    }
+
+    // ── Refresh from API ──
+    async function refreshFromAPI() {
+      const user = getTwitchUser();
+      if (!user) return;
+      const btn = document.getElementById('refreshBtn');
+      btn.textContent = '↻ Loading…';
+
+      const res = await twitchFetch('/channels?broadcaster_id=' + user.id);
+
+      btn.textContent = '↻ Refresh';
+
+      if (res.status === 401) {
+        showFeedback('error', 'Token expired — please reconnect Twitch from the sidebar.');
+        return;
+      }
+      if (!res.ok || !res.data) {
+        showFeedback('error', 'Could not load channel info. Check your connection.');
+        return;
+      }
+
+      const ch = res.data.data?.[0];
+      if (!ch) return;
+
+      // Title
+      document.getElementById('titleInput').value = ch.title || '';
+      updateTitleCounter(ch.title || '');
+
+      // Game
+      if (ch.game_id && ch.game_name) {
+        setGame(ch.game_id, ch.game_name, '');
+      }
+
+      // Tags
+      currentTags = Array.isArray(ch.tags) ? [...ch.tags] : [];
+      renderTags();
+    }
+
+    // ── Title ──
+    function onTitleInput() {
+      updateTitleCounter(document.getElementById('titleInput').value);
+    }
+    function updateTitleCounter(v) {
+      const len = v.length;
+      const badge = document.getElementById('titleCharBadge');
+      badge.textContent = len + ' / 140';
+      badge.className = 'char-badge' + (len > 130 ? (len >= 140 ? ' over' : ' warn') : '');
+    }
+
+    // ── Game search ──
+    function onGameSearch() {
+      clearTimeout(gameSearchTimer);
+      const q = document.getElementById('gameSearch').value.trim();
+      if (q.length < 2) { document.getElementById('gameResults').classList.remove('open'); return; }
+      document.getElementById('gameResults').innerHTML = '<div class="game-searching">Searching…</div>';
+      document.getElementById('gameResults').classList.add('open');
+      gameSearchTimer = setTimeout(() => searchGames(q), 400);
+    }
+
+    async function searchGames(q) {
+      const res = await twitchFetch('/search/categories?query=' + encodeURIComponent(q) + '&first=10');
+      const resultsEl = document.getElementById('gameResults');
+      if (!res.ok || !res.data?.data?.length) {
+        resultsEl.innerHTML = '<div class="game-searching">No results found.</div>';
+        return;
+      }
+      resultsEl.innerHTML = '';
+      res.data.data.forEach(g => {
+        const item = document.createElement('div');
+        item.className = 'game-result-item';
+        const thumbUrl = g.box_art_url
+          ? g.box_art_url.replace('{width}', '45').replace('{height}', '60')
+          : '';
+        item.innerHTML = `
+          ${thumbUrl ? `<img class="game-thumb" src="${esc(thumbUrl)}" alt="">` : ''}
+          <span class="game-name">${esc(g.name)}</span>
+        `;
+        item.onclick = () => {
+          setGame(g.id, g.name, thumbUrl);
+          resultsEl.classList.remove('open');
+          document.getElementById('gameSearch').value = '';
+        };
+        resultsEl.appendChild(item);
+      });
+    }
+
+    function setGame(id, name, thumbUrl) {
+      selectedGameId   = id;
+      selectedGameName = name;
+      document.getElementById('gameSelected').classList.add('show');
+      document.getElementById('gameSearchWrap').style.display = 'none';
+      document.getElementById('gameSelectedName').textContent = name;
+      const thumb = document.getElementById('gameThumb');
+      if (thumbUrl) {
+        thumb.src = thumbUrl;
+        thumb.style.display = '';
+      } else {
+        thumb.style.display = 'none';
+      }
+    }
+
+    function clearGame() {
+      selectedGameId   = '';
+      selectedGameName = '';
+      document.getElementById('gameSelected').classList.remove('show');
+      document.getElementById('gameSearchWrap').style.display = '';
+      document.getElementById('gameSearch').value = '';
+      document.getElementById('gameSearch').focus();
+    }
+
+    // ── Tags ──
+    function onTagKeydown(e) {
+      if (e.key === 'Enter' || e.key === ',') {
+        e.preventDefault();
+        const val = e.target.value.trim().replace(/,/g, '');
+        addTag(val);
+        e.target.value = '';
+      } else if (e.key === 'Backspace' && e.target.value === '' && currentTags.length) {
+        currentTags.pop();
+        renderTags();
+      }
+    }
+
+    function addTag(tag) {
+      tag = tag.trim();
+      if (!tag || currentTags.length >= 10 || currentTags.includes(tag)) return;
+      currentTags.push(tag);
+      renderTags();
+    }
+
+    function removeTag(tag) {
+      currentTags = currentTags.filter(t => t !== tag);
+      renderTags();
+    }
+
+    function renderTags() {
+      const wrap = document.getElementById('tagsWrap');
+      wrap.querySelectorAll('.tag-pill').forEach(el => el.remove());
+      const input = document.getElementById('tagInput');
+      if (!wrap.dataset.handlerAttached) {
+        wrap.addEventListener('click', e => {
+          const btn = e.target.closest('.tag-pill-del');
+          if (!btn) return;
+          removeTag(btn.dataset.tag);
+        });
+        wrap.dataset.handlerAttached = '1';
+      }
+      currentTags.forEach(tag => {
+        const pill = document.createElement('div');
+        pill.className = 'tag-pill';
+        pill.appendChild(document.createTextNode(tag));
+        const btn = document.createElement('button');
+        btn.className = 'tag-pill-del';
+        btn.dataset.tag = tag;
+        btn.title = 'Remove';
+        btn.setAttribute('aria-label', 'Remove tag');
+        btn.textContent = '×';
+        pill.appendChild(btn);
+        wrap.insertBefore(pill, input);
+      });
+      input.placeholder = currentTags.length >= 10 ? '(max 10 tags)' : 'Add tag…';
+    }
+
+    // ── Update ──
+    async function updateStream() {
+      if (isUpdating) return;
+      const user = getTwitchUser();
+      if (!user) return;
+
+      const title  = document.getElementById('titleInput').value.trim();
+      const gameId = selectedGameId;
+      const tags   = [...currentTags];
+
+      if (!title) { showFeedback('error', 'Stream title cannot be empty.'); return; }
+
+      isUpdating = true;
+      const btn = document.getElementById('updateBtn');
+      btn.disabled = true;
+      btn.textContent = '⏳ Updating…';
+
+      const body = { title, tags };
+      if (gameId) body.game_id = gameId;
+
+      const res = await twitchFetch('/channels?broadcaster_id=' + user.id, {
+        method: 'PATCH',
+        body: JSON.stringify(body),
+      });
+
+      isUpdating = false;
+      btn.disabled = false;
+      btn.textContent = '✓ Update Stream Info';
+
+      if (res.status === 401) {
+        showFeedback('error', 'Token expired. Please reconnect Twitch.');
+        return;
+      }
+      if (res.status === 403) {
+        document.getElementById('scopeWarning').classList.add('show');
+        showFeedback('error', 'Permission denied — token needs channel:manage:broadcast scope. Reconnect Twitch.');
+        return;
+      }
+      if (!res.ok) {
+        showFeedback('error', 'Update failed (status ' + res.status + '). Try again.');
+        return;
+      }
+
+      // Success
+      showFeedback('success', '✅ Stream info updated! Changes are live on Twitch.');
+      saveRecentTitle(title);
+    }
+
+    // ── Feedback ──
+    function showFeedback(type, msg) {
+      const el = document.getElementById('feedback');
+      el.className = 'feedback show ' + type;
+      el.textContent = msg;
+      clearTimeout(el._timer);
+      el._timer = setTimeout(() => el.classList.remove('show'), 6000);
+    }
+
+    // ── Recent titles ──
+    function getRecents() {
+      try { return JSON.parse(localStorage.getItem(RECENT_KEY)) || []; } catch(e) { return []; }
+    }
+    function saveRecentTitle(title) {
+      let recents = getRecents().filter(t => t !== title);
+      recents.unshift(title);
+      recents = recents.slice(0, MAX_RECENT);
+      localStorage.setItem(RECENT_KEY, JSON.stringify(recents));
+      renderRecents();
+    }
+    function renderRecents() {
+      const recents = getRecents();
+      const section = document.getElementById('recentsSection');
+      const list    = document.getElementById('recentTitlesList');
+      if (!recents.length) { section.style.display = 'none'; return; }
+      section.style.display = '';
+      list.innerHTML = '';
+      recents.forEach(t => {
+        const div = document.createElement('div');
+        div.className = 'recent-title';
+        div.innerHTML = `<span>${esc(t)}</span><span class="rt-arrow">↑ Use</span>`;
+        div.onclick = () => {
+          document.getElementById('titleInput').value = t;
+          updateTitleCounter(t);
+        };
+        list.appendChild(div);
+      });
+    }
+
+    init();
+  </script>
+</body>
+</html>

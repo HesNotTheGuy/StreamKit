@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chat Wall — StreamKit</title>
+  <link rel="stylesheet" href="../../../assets/styles/dashboard.css">
+  <script src="../../../assets/js/util.js"></script>
+  <style>
+    body { padding: 24px; max-width: 560px; }
+
+    .tool-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+    .tool-header h1 { margin: 0; }
+
+    /* ── Add message form ── */
+    .add-card {
+      padding: 16px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      margin-bottom: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .add-row { display: flex; gap: 8px; }
+    .add-row input { flex: 1; }
+    .username-input { max-width: 140px; }
+
+    /* ── Wall entries ── */
+    .wall-empty {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .wall-list { display: flex; flex-direction: column; gap: 8px; }
+
+    .wall-item {
+      display: flex;
+      gap: 12px;
+      padding: 12px 14px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      align-items: flex-start;
+      transition: border-color 0.15s;
+      position: relative;
+    }
+    .wall-item:hover { border-color: var(--accent); }
+
+    .wall-avatar {
+      width: 32px; height: 32px; flex-shrink: 0;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 15px; font-weight: 800;
+      color: #fff;
+    }
+    .wall-body { flex: 1; min-width: 0; }
+    .wall-user {
+      font-size: 13px; font-weight: 700; color: var(--accent);
+      margin-bottom: 3px;
+    }
+    .wall-msg {
+      font-size: 15px; color: var(--text); line-height: 1.4;
+      word-break: break-word;
+    }
+    .wall-time { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+    .wall-del {
+      background: none; border: none;
+      color: var(--muted); cursor: pointer;
+      font-size: 16px; padding: 2px 4px;
+      border-radius: 4px; opacity: 0;
+      transition: opacity 0.15s, color 0.15s;
+      flex-shrink: 0;
+    }
+    .wall-item:hover .wall-del { opacity: 1; }
+    .wall-del:hover { color: var(--red); }
+
+    /* ── Mode toggle ── */
+    .mode-toggle { display: flex; gap: 6px; margin-bottom: 10px; }
+    .mode-btn {
+      flex: 1; padding: 8px; border-radius: 7px; font-size: 12px; font-weight: 700;
+      border: 1px solid var(--border); background: var(--bg3); color: var(--muted);
+      cursor: pointer; font-family: inherit; transition: all 0.15s;
+    }
+    .mode-btn.active { border-color: var(--accent); background: rgba(124,106,247,0.12); color: var(--text); }
+
+    /* avatar colors by first char */
+    .av-0 { background: #7c6af7; }
+    .av-1 { background: #3b9ef5; }
+    .av-2 { background: #e8733a; }
+    .av-3 { background: #3dba72; }
+    .av-4 { background: #e8449a; }
+    .av-5 { background: #f0a500; }
+    .av-6 { background: #6eb5ff; }
+    .av-7 { background: #e74c3c; }
+  </style>
+</head>
+<body>
+
+  <div class="tool-header">
+    <h1>Chat Wall</h1>
+    <span id="countLabel" style="color:var(--muted);font-size:14px"></span>
+  </div>
+
+  <div class="add-card">
+    <div class="add-row">
+      <input type="text" id="usernameInput" class="username-input" placeholder="Username" maxlength="40">
+      <input type="text" id="messageInput"  placeholder="Message to pin…" maxlength="200">
+    </div>
+    <div style="display:flex;justify-content:flex-end">
+      <button class="btn btn-primary btn-sm" onclick="addMessage()">📌 Pin Message</button>
+    </div>
+  </div>
+
+  <div id="wallList" class="wall-list"></div>
+
+  <div class="obs-link-row">
+    <div class="mode-toggle">
+      <button class="mode-btn active" id="modeBtn-cycle" onclick="setMode('cycle')">Cycle</button>
+      <button class="mode-btn"        id="modeBtn-scroll" onclick="setMode('scroll')">Scroll</button>
+    </div>
+    <button class="btn-copy-obs" id="copyOBSBtn" onclick="copyOBSLink()">📋 Copy OBS Browser Source URL</button>
+  </div>
+
+  <script>
+    const KEY      = 'streamkit_chatwall';
+    const MODE_KEY = 'streamkit_chatwall_mode';
+
+    let messages = [];
+
+    const AVATAR_COLORS = 8; // av-0 through av-7
+    function avatarClass(username) {
+      let hash = 0;
+      for (let i = 0; i < username.length; i++) hash = (hash * 31 + username.charCodeAt(i)) & 0xfffffff;
+      return 'av-' + (hash % AVATAR_COLORS);
+    }
+
+    function load() {
+      try { messages = JSON.parse(localStorage.getItem(KEY)) || []; }
+      catch(e) { messages = []; }
+      render();
+    }
+
+    function save() {
+      localStorage.setItem(KEY, JSON.stringify(messages));
+    }
+
+    function addMessage() {
+      const user = document.getElementById('usernameInput').value.trim();
+      const msg  = document.getElementById('messageInput').value.trim();
+      if (!msg) return;
+      messages.unshift({
+        id:   uid(),
+        user: user || 'Anonymous',
+        msg,
+        ts:   Date.now(),
+      });
+      if (messages.length > 50) messages.pop(); // cap at 50
+      save();
+      render();
+      document.getElementById('messageInput').value = '';
+    }
+
+    function removeMessage(id) {
+      messages = messages.filter(m => m.id !== id);
+      save();
+      render();
+    }
+
+    function clearAll() {
+      if (!confirm('Clear all pinned messages?')) return;
+      messages = [];
+      save();
+      render();
+    }
+
+    function render() {
+      document.getElementById('countLabel').textContent = messages.length ? `${messages.length} pinned` : '';
+
+      const list = document.getElementById('wallList');
+      if (!messages.length) {
+        list.innerHTML = '<div class="wall-empty">No messages pinned yet.<br>Add a viewer\'s message to put it on the wall!</div>';
+        return;
+      }
+      list.innerHTML = '';
+      messages.forEach(m => {
+        const div   = document.createElement('div');
+        div.className = 'wall-item';
+        const avCls   = avatarClass(m.user);
+        const initial = m.user[0].toUpperCase();
+        const time    = new Date(m.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        div.innerHTML = `
+          <div class="wall-avatar ${avCls}">${initial}</div>
+          <div class="wall-body">
+            <div class="wall-user">${esc(m.user)}</div>
+            <div class="wall-msg">${esc(m.msg)}</div>
+            <div class="wall-time">${time}</div>
+          </div>
+          <button class="wall-del" onclick="removeMessage('${m.id}')" title="Remove">✕</button>
+        `;
+        list.appendChild(div);
+      });
+    }
+
+    // allow Enter to pin
+    document.getElementById('messageInput').addEventListener('keydown', e => {
+      if (e.key === 'Enter') addMessage();
+    });
+
+    function setMode(mode) {
+      localStorage.setItem(MODE_KEY, mode);
+      document.getElementById('modeBtn-cycle').classList.toggle('active',  mode === 'cycle');
+      document.getElementById('modeBtn-scroll').classList.toggle('active', mode === 'scroll');
+    }
+
+    function loadMode() {
+      const mode = localStorage.getItem(MODE_KEY) || 'cycle';
+      document.getElementById('modeBtn-cycle').classList.toggle('active',  mode === 'cycle');
+      document.getElementById('modeBtn-scroll').classList.toggle('active', mode === 'scroll');
+    }
+
+    load();
+    loadMode();
+  </script>
+</body>
+</html>

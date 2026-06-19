@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Timer Suite — StreamKit</title>
+  <link rel="stylesheet" href="../../../assets/styles/dashboard.css">
+  <script src="../../../assets/js/util.js"></script>
+  <style>
+    body { padding: 20px; }
+    .tool-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+
+    .timers-list { display: flex; flex-direction: column; gap: 12px; }
+
+    .timer-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      transition: border-color 0.2s;
+    }
+    .timer-card.running { border-color: var(--accent); }
+    .timer-card.done    { border-color: var(--red); animation: flash-red 1.5s infinite; }
+
+    .timer-top { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+    .timer-label-input {
+      flex: 1;
+      font-size: 16px;
+      font-weight: 700;
+      background: transparent;
+      border: none;
+      border-bottom: 1px solid transparent;
+      border-radius: 0;
+      padding: 2px 4px;
+      color: var(--text);
+    }
+    .timer-label-input:focus { border-bottom-color: var(--accent); outline: none; }
+
+    .timer-type-select {
+      width: auto;
+      font-size: 13px;
+      padding: 6px 10px;
+      color: var(--muted);
+    }
+
+    .timer-del {
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 18px;
+      padding: 0 4px;
+      line-height: 1;
+    }
+    .timer-del:hover { color: var(--red); }
+
+    .timer-display {
+      text-align: center;
+      font-size: 52px;
+      font-weight: 800;
+      letter-spacing: 2px;
+      line-height: 1;
+      margin-bottom: 14px;
+      font-variant-numeric: tabular-nums;
+      color: var(--text);
+    }
+    .timer-card.running .timer-display { color: var(--accent); }
+    .timer-card.done    .timer-display { color: var(--red); }
+
+    .timer-duration-row { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+    .timer-duration-row input { width: 70px; text-align: center; }
+    .timer-duration-row span { color: var(--muted); font-size: 14px; }
+
+    .timer-controls { display: flex; gap: 8px; }
+    .timer-controls .btn { flex: 1; padding: 12px; }
+
+    .add-btn-row { margin-top: 4px; }
+  </style>
+</head>
+<body>
+  <div class="tool-header">
+    <h1>Timer Suite</h1>
+    <button class="btn btn-ghost btn-sm" onclick="stopAll()">Stop All</button>
+  </div>
+
+  <div class="timers-list" id="timersList"></div>
+
+  <div class="add-btn-row mt-16">
+    <button class="btn btn-primary" style="width:100%" onclick="addTimer()">+ Add Timer</button>
+  </div>
+
+  <script>
+    const KEY = 'streamkit_timers';
+    let timers = [];
+    let ticker = null;
+
+    function load() {
+      try {
+        const s = localStorage.getItem(KEY);
+        timers = s ? JSON.parse(s) : [];
+      } catch(e) { timers = []; }
+      // reconcile startedAt times on reload
+      timers.forEach(t => {
+        if (t.running && t.startedAt) {
+          const elapsed = (Date.now() - t.startedAt) / 1000;
+          if (t.type === 'countup') {
+            t.elapsed = (t.elapsed || 0) + elapsed;
+          } else {
+            t.elapsed = (t.elapsed || 0) + elapsed;
+          }
+          t.startedAt = Date.now();
+        }
+      });
+      if (!timers.length) addTimer(false);
+      render();
+      startTick();
+    }
+
+    function save() { localStorage.setItem(KEY, JSON.stringify(timers)); }
+
+    function addTimer(doSave = true) {
+      timers.push({
+        id: uid(),
+        label: 'New Timer',
+        type: 'countdown',
+        duration: 300,
+        elapsed: 0,
+        startedAt: null,
+        running: false
+      });
+      if (doSave) save();
+      render();
+    }
+
+    function deleteTimer(id) {
+      timers = timers.filter(t => t.id !== id);
+      save();
+      render();
+    }
+
+    function updateLabel(id, val) {
+      const t = timers.find(t => t.id === id);
+      if (t) { t.label = val; save(); }
+    }
+
+    function updateType(id, val) {
+      const t = timers.find(t => t.id === id);
+      if (t) { t.type = val; t.elapsed = 0; t.running = false; t.startedAt = null; save(); render(); }
+    }
+
+    function updateDuration(id, mins, secs) {
+      const t = timers.find(t => t.id === id);
+      if (t) { t.duration = (parseInt(mins)||0)*60 + (parseInt(secs)||0); save(); }
+    }
+
+    function startTimer(id) {
+      const t = timers.find(t => t.id === id);
+      if (!t || t.running) return;
+      t.running = true;
+      t.startedAt = Date.now();
+      save();
+      render();
+    }
+
+    function stopTimer(id) {
+      const t = timers.find(t => t.id === id);
+      if (!t) return;
+      if (t.running && t.startedAt) {
+        t.elapsed += (Date.now() - t.startedAt) / 1000;
+      }
+      t.running = false;
+      t.startedAt = null;
+      save();
+      render();
+    }
+
+    function resetTimer(id) {
+      const t = timers.find(t => t.id === id);
+      if (!t) return;
+      t.running = false;
+      t.startedAt = null;
+      t.elapsed = 0;
+      save();
+      render();
+    }
+
+    function stopAll() {
+      timers.forEach(t => { if (t.running) stopTimer(t.id); });
+    }
+
+    function getCurrent(t) {
+      const liveElapsed = t.running && t.startedAt ? (Date.now() - t.startedAt) / 1000 : 0;
+      const total = (t.elapsed || 0) + liveElapsed;
+      if (t.type === 'countup') return total;
+      // countdown / interval
+      return Math.max(0, (t.duration || 0) - total);
+    }
+
+    function isDone(t) {
+      if (t.type === 'countup') return false;
+      return t.running && getCurrent(t) <= 0;
+    }
+
+    function fmtTime(secs) {
+      secs = Math.max(0, Math.floor(secs));
+      const h = Math.floor(secs / 3600);
+      const m = Math.floor((secs % 3600) / 60);
+      const s = secs % 60;
+      if (h > 0) return `${h}:${pad(m)}:${pad(s)}`;
+      return `${pad(m)}:${pad(s)}`;
+    }
+    function pad(n) { return String(n).padStart(2,'0'); }
+
+    function render() {
+      const list = document.getElementById('timersList');
+      list.innerHTML = '';
+      timers.forEach(t => {
+        const current = getCurrent(t);
+        const done = isDone(t);
+        const isCountdown = t.type !== 'countup';
+        const durMins = Math.floor((t.duration||0) / 60);
+        const durSecs = (t.duration||0) % 60;
+
+        const card = document.createElement('div');
+        card.className = 'timer-card' + (done ? ' done' : t.running ? ' running' : '');
+        card.innerHTML = `
+          <div class="timer-top">
+            <input class="timer-label-input" type="text" value="${escHtml(t.label)}"
+              onchange="updateLabel('${t.id}', this.value)"
+              onblur="updateLabel('${t.id}', this.value)">
+            <select class="timer-type-select" onchange="updateType('${t.id}', this.value)" ${t.running ? 'disabled' : ''}>
+              <option value="countdown" ${t.type==='countdown'?'selected':''}>Countdown</option>
+              <option value="countup"   ${t.type==='countup'?'selected':''}>Count Up</option>
+              <option value="interval"  ${t.type==='interval'?'selected':''}>Interval</option>
+            </select>
+            <button class="timer-del" onclick="deleteTimer('${t.id}')" title="Delete">×</button>
+          </div>
+          ${isCountdown ? `
+          <div class="timer-duration-row" ${t.running ? 'style="opacity:0.5;pointer-events:none"' : ''}>
+            <input type="number" min="0" max="999" value="${durMins}"
+              onchange="updateDuration('${t.id}', this.value, document.getElementById('ds_${t.id}').value)"
+              style="width:64px;text-align:center">
+            <span>m</span>
+            <input type="number" id="ds_${t.id}" min="0" max="59" value="${durSecs}"
+              onchange="updateDuration('${t.id}', document.getElementById('dm_${t.id}').value, this.value)"
+              style="width:64px;text-align:center">
+            <span>s</span>
+          </div>` : ''}
+          <div class="timer-display">${done ? '⚠ 00:00' : fmtTime(current)}</div>
+          <div class="timer-controls">
+            ${t.running
+              ? `<button class="btn btn-ghost" onclick="stopTimer('${t.id}')">⏸ Pause</button>`
+              : `<button class="btn btn-primary" onclick="startTimer('${t.id}')">▶ Start</button>`}
+            <button class="btn btn-ghost" onclick="resetTimer('${t.id}')">↺ Reset</button>
+          </div>
+        `;
+        // fix the id for dm_ after innerHTML
+        const dmInput = card.querySelector('input[type=number]:not([id])');
+        if (dmInput) dmInput.id = `dm_${t.id}`;
+        list.appendChild(card);
+      });
+    }
+
+    function startTick() {
+      if (ticker) clearInterval(ticker);
+      ticker = setInterval(() => {
+        const anyRunning = timers.some(t => t.running);
+        if (anyRunning) {
+          // handle interval timers that hit 0
+          timers.forEach(t => {
+            if (t.type === 'interval' && t.running && getCurrent(t) <= 0) {
+              t.elapsed = 0;
+              t.startedAt = Date.now();
+              save();
+            }
+          });
+          render();
+        }
+      }, 500);
+    }
+
+    load();
+  </script>
+
+  <!-- ── Overlay Style Panel ── -->
+  <style>
+    .preview-hint { font-size: 11px; color: var(--muted); margin-top: 10px; }
+    .timer-preview-box { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: rgba(0,0,0,0.6); border-radius: 8px; border: 1px solid rgba(255,255,255,0.08); }
+    .pv-timer-label { font-size: 14px; font-weight: 600; color: rgba(255,255,255,0.8); }
+    .pv-timer-val { font-size: 30px; font-weight: 800; text-shadow: 2px 2px 0 #000, -1px -1px 0 #000; }
+  </style>
+
+  <button class="style-toggle-btn" id="styleToggle" onclick="toggleStylePanel()">
+    🎨 Overlay Style <span class="st-arrow">▼</span>
+  </button>
+  <div class="style-panel" id="stylePanel">
+    <div class="style-section">
+      <div class="style-section-label">Font</div>
+      <div class="font-grid" id="fontGrid"></div>
+    </div>
+    <div class="style-section">
+      <div class="style-section-label">Colors</div>
+      <div class="color-row">
+        <div class="color-swatch"><label>Timer Value</label>
+          <input type="color" id="colorValue" value="#ffffff" oninput="saveOvStyle()"></div>
+        <div class="color-swatch"><label>Timer Done</label>
+          <input type="color" id="colorDone" value="#e74c3c" oninput="saveOvStyle()"></div>
+      </div>
+    </div>
+    <div class="style-section">
+      <div class="style-section-label">Preview</div>
+      <div class="timer-preview-box" id="previewBox">
+        <span class="pv-timer-label">Stream</span>
+        <span class="pv-timer-val" id="pvVal">01:23:45</span>
+      </div>
+      <div class="preview-hint">Changes appear in the OBS overlay within 1 second.</div>
+      <div class="obs-link-row">
+        <button class="btn-copy-obs" id="copyOBSBtn" onclick="copyOBSLink()">📋 Copy OBS Browser Source URL</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const OV_KEY  = 'streamkit_overlay_timers';
+    const OV_DEFS = { font: 'system', colorValue: '#ffffff', colorDone: '#e74c3c' };
+
+    let currentOvFont = 'system';
+    function getOvStyle() {
+      try { return { ...OV_DEFS, ...JSON.parse(localStorage.getItem(OV_KEY)) }; }
+      catch(e) { return { ...OV_DEFS }; }
+    }
+    function saveOvStyle() {
+      const s = { font: currentOvFont, colorValue: document.getElementById('colorValue').value, colorDone: document.getElementById('colorDone').value };
+      localStorage.setItem(OV_KEY, JSON.stringify(s));
+      updatePreview(s);
+    }
+    function updatePreview(s) {
+      const f = StreamKit.FONTS.find(f => f.id === s.font) || StreamKit.FONTS[0];
+      document.getElementById('previewBox').style.fontFamily = f.css;
+      document.getElementById('pvVal').style.color = s.colorValue;
+    }
+    function selectOvFont(id) {
+      currentOvFont = id;
+      document.querySelectorAll('.font-card').forEach(c => c.classList.toggle('active', c.dataset.fid === id));
+      saveOvStyle();
+    }
+    function buildFontGrid() {
+      const grid = document.getElementById('fontGrid');
+      grid.innerHTML = '';
+      StreamKit.FONTS.forEach(f => {
+        const card = document.createElement('div');
+        card.className = 'font-card' + (f.id === currentOvFont ? ' active' : '');
+        card.dataset.fid = f.id;
+        card.onclick = () => selectOvFont(f.id);
+        const licenseClass = StreamKit.licenseClass(f.license);
+        card.innerHTML = `<span class="font-sample" style="font-family:${f.css}">Aa</span><span class="font-name">${f.label}</span><span class="font-license ${licenseClass}">${f.license}</span>`;
+        grid.appendChild(card);
+      });
+    }
+    function loadOvStyle() {
+      const s = getOvStyle();
+      currentOvFont = s.font || 'system';
+      document.getElementById('colorValue').value = s.colorValue || '#ffffff';
+      document.getElementById('colorDone').value  = s.colorDone  || '#e74c3c';
+      buildFontGrid();
+      updatePreview(s);
+    }
+    function toggleStylePanel() {
+      const open = document.getElementById('stylePanel').classList.toggle('open');
+      document.getElementById('styleToggle').classList.toggle('open', open);
+    }
+    loadOvStyle();
+  </script>
+</body>
+</html>

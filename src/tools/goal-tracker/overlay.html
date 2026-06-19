@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Goal Overlay — StreamKit</title>
+  <link rel="stylesheet" href="../../../assets/styles/overlay.css">
+  <script src="../../../assets/js/util.js"></script>
+  <style>
+    body { padding: 10px; }
+    .goals-stack { display: flex; flex-direction: column; gap: 10px; }
+    .goal-block  { display: flex; flex-direction: column; gap: 4px; min-width: 200px; }
+    .goal-header-row {
+      display: flex; align-items: baseline;
+      justify-content: space-between; gap: 8px;
+    }
+    .goal-name {
+      font-size: 15px; font-weight: 700;
+      color: rgba(255,255,255,0.9);
+      text-shadow: 1px 1px 3px rgba(0,0,0,0.95);
+    }
+    .goal-nums {
+      font-size: 20px; font-weight: 800; color: #fff;
+      text-shadow: 2px 2px 0 #000, -1px -1px 0 #000,
+                   0 0 10px rgba(0,0,0,0.9);
+      white-space: nowrap;
+    }
+    .goal-bar-track {
+      width: 100%; height: 12px;
+      background: rgba(0,0,0,0.5);
+      border-radius: 6px; overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.15);
+    }
+    .goal-bar-fill {
+      height: 100%; border-radius: 6px;
+      transition: width 0.5s ease;
+    }
+    .goal-pct {
+      font-size: 12px; color: rgba(255,255,255,0.7);
+      text-shadow: 1px 1px 3px rgba(0,0,0,0.9);
+      text-align: right;
+    }
+  </style>
+</head>
+<body>
+  <div class="goals-stack" id="stack"></div>
+
+  <script>
+    const KEY       = 'streamkit_goals';
+    const STYLE_KEY = 'streamkit_overlay_goals';
+
+    const DEFAULTS  = { font: 'system', colorBar: '#7c6af7', colorComplete: '#2ecc71' };
+
+    function getStyle() {
+      try { return { ...DEFAULTS, ...JSON.parse(localStorage.getItem(STYLE_KEY)) }; }
+      catch(e) { return { ...DEFAULTS }; }
+    }
+
+    function update() {
+      const s       = getStyle();
+      const fontCss = StreamKit.FONT_CSS[s.font] || StreamKit.FONT_CSS.system;
+      document.body.style.fontFamily = fontCss;
+
+      const raw   = localStorage.getItem(KEY);
+      const stack = document.getElementById('stack');
+      if (!raw) { stack.innerHTML = ''; return; }
+      let goals;
+      try { goals = JSON.parse(raw); } catch(e) { return; }
+
+      stack.innerHTML = '';
+      goals.forEach(g => {
+        const pct      = g.target > 0 ? Math.min(100, Math.round((g.current / g.target) * 100)) : 0;
+        const complete = g.current >= g.target;
+        const barColor = complete ? s.colorComplete : s.colorBar;
+
+        const block = document.createElement('div');
+        block.className = 'goal-block';
+        block.innerHTML = `
+          <div class="goal-header-row">
+            <span class="goal-name">${esc(g.label)}</span>
+            <span class="goal-nums">${g.current} / ${g.target}</span>
+          </div>
+          <div class="goal-bar-track">
+            <div class="goal-bar-fill" style="width:${pct}%;background:${barColor}${complete ? ';animation:celebrate 0.5s ease' : ''}"></div>
+          </div>
+          <div class="goal-pct">${pct}%${complete ? ' 🎉' : ''}</div>
+        `;
+        stack.appendChild(block);
+      });
+    }
+
+    update();
+    setInterval(update, 2000);
+  </script>
+</body>
+</html>

@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Setup Guide — StreamKit</title>
+  <link rel="stylesheet" href="../../../assets/styles/dashboard.css">
+  <style>
+    body { padding: 0; margin: 0; overflow-x: hidden; }
+
+    /* ── Tab bar ── */
+    .tab-bar {
+      display: flex;
+      gap: 2px;
+      padding: 16px 24px 0;
+      border-bottom: 2px solid var(--border);
+      background: var(--bg2);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .tab-btn {
+      padding: 10px 18px;
+      border: none;
+      background: none;
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -2px;
+      border-radius: 6px 6px 0 0;
+      transition: color 0.15s;
+      font-family: inherit;
+    }
+    .tab-btn:hover { color: var(--text); }
+    .tab-btn.active { color: var(--text); border-bottom-color: var(--accent); }
+
+    /* ── Content ── */
+    .tab-content { display: none; padding: 28px 24px; max-width: 680px; }
+    .tab-content.active { display: block; }
+
+    /* ── Section blocks ── */
+    .section { margin-bottom: 32px; }
+    .section-title {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .section-sub { font-size: 14px; color: var(--muted); margin-bottom: 16px; line-height: 1.5; }
+
+    /* ── Tool grid (overview) ── */
+    .tool-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .tool-chip {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 12px 14px;
+      background: var(--bg3);
+      border-radius: 10px;
+      border: 1px solid var(--border);
+    }
+    .tool-icon { font-size: 20px; flex-shrink: 0; margin-top: 1px; }
+    .tool-name { font-size: 14px; font-weight: 700; margin-bottom: 2px; }
+    .tool-desc { font-size: 12px; color: var(--muted); line-height: 1.4; }
+    .obs-badge {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 1px 6px;
+      border-radius: 8px;
+      background: rgba(124,106,247,0.2);
+      color: var(--accent);
+      margin-left: 4px;
+      vertical-align: middle;
+    }
+
+    /* ── Steps ── */
+    .steps { display: flex; flex-direction: column; gap: 16px; }
+    .step {
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+    }
+    .step-num {
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 800;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+    .step-num.green { background: var(--green); }
+    .step-body { flex: 1; }
+    .step-body h4 { font-size: 15px; font-weight: 700; margin-bottom: 5px; }
+    .step-body p  { font-size: 13px; color: var(--muted); line-height: 1.5; margin-bottom: 8px; }
+    .step-body p:last-child { margin-bottom: 0; }
+
+    /* ── Copy rows ── */
+    .copy-row { display: flex; gap: 6px; margin-top: 6px; }
+    .copy-row input {
+      flex: 1;
+      font-family: 'Consolas', 'Courier New', monospace;
+      font-size: 12px;
+      color: var(--accent);
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px 10px;
+    }
+    .copy-btn {
+      padding: 8px 14px;
+      border: 1px solid var(--border);
+      background: var(--bg3);
+      color: var(--text);
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      white-space: nowrap;
+      font-family: inherit;
+      transition: background 0.15s;
+    }
+    .copy-btn:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .copy-btn.copied { background: var(--green); border-color: var(--green); color: #fff; }
+
+    /* ── Overlay cards ── */
+    .overlay-list { display: flex; flex-direction: column; gap: 12px; }
+    .overlay-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 16px;
+    }
+    .overlay-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+    .overlay-name { font-size: 15px; font-weight: 700; }
+    .overlay-size { font-size: 12px; color: var(--muted); }
+    .overlay-desc { font-size: 13px; color: var(--muted); margin-bottom: 8px; }
+
+    /* ── Callout ── */
+    .callout {
+      display: flex;
+      gap: 10px;
+      padding: 12px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      line-height: 1.5;
+      margin-bottom: 16px;
+    }
+    .callout.info    { background: rgba(52,152,219,0.1);  border: 1px solid rgba(52,152,219,0.25);  color: #7ec8f0; }
+    .callout.success { background: rgba(46,204,113,0.1);  border: 1px solid rgba(46,204,113,0.25);  color: #6ddc9a; }
+    .callout.warn    { background: rgba(240,165,0,0.1);   border: 1px solid rgba(240,165,0,0.25);   color: #f0c060; }
+    .callout-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+
+    /* ── OBS instruction steps ── */
+    .obs-steps {
+      list-style: none;
+      counter-reset: obs;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 0;
+      margin: 10px 0 0;
+    }
+    .obs-steps li {
+      counter-increment: obs;
+      display: flex;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+    .obs-steps li::before {
+      content: counter(obs);
+      background: var(--bg3);
+      color: var(--muted);
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 700;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+    code {
+      background: var(--bg3);
+      color: var(--accent);
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-family: 'Consolas', monospace;
+      font-size: 12px;
+    }
+
+    /* ── Sound file grid ── */
+    .sound-formats {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+    .fmt-chip {
+      padding: 4px 12px;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    /* ── Shortcut table ── */
+    .shortcut-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .shortcut-table th {
+      text-align: left;
+      padding: 8px 12px;
+      color: var(--muted);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      border-bottom: 1px solid var(--border);
+    }
+    .shortcut-table td {
+      padding: 10px 12px;
+      border-bottom: 1px solid rgba(51,51,51,0.5);
+    }
+    .shortcut-table tr:last-child td { border-bottom: none; }
+    kbd {
+      display: inline-block;
+      padding: 2px 8px;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      font-size: 12px;
+      font-family: 'Consolas', monospace;
+      color: var(--text);
+      box-shadow: 0 1px 0 var(--border);
+    }
+
+    a.ext-link {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 600;
+    }
+    a.ext-link:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="switchTab('overview')">👋 Overview</button>
+    <button class="tab-btn" onclick="switchTab('spotify')">🎵 Spotify</button>
+    <button class="tab-btn" onclick="switchTab('obs')">📺 OBS Overlays</button>
+    <button class="tab-btn" onclick="switchTab('sounds')">🔊 Soundboard</button>
+    <button class="tab-btn" onclick="switchTab('twitch')">🟣 Twitch</button>
+    <button class="tab-btn" onclick="switchTab('shortcuts')">⌨️ Shortcuts</button>
+  </div>
+
+  <!-- ═══ OVERVIEW ═══ -->
+  <div class="tab-content active" id="tab-overview">
+    <div class="section">
+      <div class="section-title">Welcome to StreamKit 👋</div>
+      <div class="section-sub">
+        A lightweight utility suite for streamers — no frameworks, no cloud, all data stays on your machine.
+        Use the sidebar to switch tools, or press <kbd>1</kbd>–<kbd>9</kbd> for instant access.
+      </div>
+      <div class="callout success">
+        <span class="callout-icon">✅</span>
+        <span>StreamKit is fully set up. The sections below walk through optional integrations (Spotify, OBS) and configuration tips.</span>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">What's included</div>
+      <div class="tool-grid">
+        <div class="tool-chip">
+          <span class="tool-icon">🎵</span>
+          <div>
+            <div class="tool-name">Spotify <span class="obs-badge">OBS</span></div>
+            <div class="tool-desc">Viewer song requests via Twitch chat (<code>!sr</code>), now playing overlay.</div>
+          </div>
+        </div>
+        <div class="tool-chip">
+          <span class="tool-icon">📊</span>
+          <div>
+            <div class="tool-name">W/L Tracker <span class="obs-badge">OBS</span></div>
+            <div class="tool-desc">Track wins, losses, draws with win rate and streak detection.</div>
+          </div>
+        </div>
+        <div class="tool-chip">
+          <span class="tool-icon">✅</span>
+          <div>
+            <div class="tool-name">Checklist</div>
+            <div class="tool-desc">Pre / mid / post-stream task lists with interval reminders.</div>
+          </div>
+        </div>
+        <div class="tool-chip">
+          <span class="tool-icon">🎮</span>
+          <div>
+            <div class="tool-name">Mini-Games</div>
+            <div class="tool-desc">Polls, team battle picker, and timed trivia rounds.</div>
+          </div>
+        </div>
+        <div class="tool-chip">
+          <span class="tool-icon">⏱</span>
+          <div>
+            <div class="tool-name">Timers <span class="obs-badge">OBS</span></div>
+            <div class="tool-desc">Multiple named countdown / countup / interval timers.</div>
+          </div>
+        </div>
+        <div class="tool-chip">
+          <span class="tool-icon">👥</span>
+          <div>
+            <div class="tool-name">Viewer Queue</div>
+            <div class="tool-desc">Manage a live queue of viewers with notes per slot.</div>
+          </div>
+        </div>
+        <div class="tool-chip">
+          <span class="tool-icon">🎯</span>
+          <div>
+            <div class="tool-name">Goal Tracker <span class="obs-badge">OBS</span></div>
+            <div class="tool-desc">Progress bars for sub goals, donation goals, challenge targets.</div>
+          </div>
+        </div>
+        <div class="tool-chip">
+          <span class="tool-icon">🔊</span>
+          <div>
+            <div class="tool-name">Soundboard</div>
+            <div class="tool-desc">Grid of audio buttons — drop <code>.mp3</code> files to activate.</div>
+          </div>
+        </div>
+        <div class="tool-chip">
+          <span class="tool-icon">📋</span>
+          <div>
+            <div class="tool-name">Clip Notes</div>
+            <div class="tool-desc">One-tap clip marker with tags and session export.</div>
+          </div>
+        </div>
+        <div class="tool-chip">
+          <span class="tool-icon">📡</span>
+          <div>
+            <div class="tool-name">Stream Info</div>
+            <div class="tool-desc">Edit title, category, and tags without leaving StreamKit.</div>
+          </div>
+        </div>
+        <div class="tool-chip">
+          <span class="tool-icon">⚔️</span>
+          <div>
+            <div class="tool-name">Raid Tracker</div>
+            <div class="tool-desc">Auto-logs incoming raids via Twitch IRC with viewer counts.</div>
+          </div>
+        </div>
+        <div class="tool-chip">
+          <span class="tool-icon">📝</span>
+          <div>
+            <div class="tool-name">Scratch Pad</div>
+            <div class="tool-desc">Persistent notepad for mid-stream notes, links, and shoutout queues.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ SPOTIFY ═══ -->
+  <div class="tab-content" id="tab-spotify">
+    <div class="section">
+      <div class="section-title">🎵 Spotify Song Requests</div>
+      <div class="section-sub">
+        Lets viewers request songs via <code>!sr &lt;song name&gt;</code> in your Twitch chat.
+        Requires a free Spotify Developer account and a Spotify Premium subscription.
+      </div>
+
+      <div class="callout info">
+        <span class="callout-icon">ℹ️</span>
+        <span>Twitch chat is read anonymously — no Twitch login or app setup needed. Only Spotify requires OAuth.</span>
+      </div>
+
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <h4>Create a Spotify Developer App</h4>
+            <p>
+              Go to the <a class="ext-link" href="https://developer.spotify.com/dashboard" target="_blank">Spotify Developer Dashboard ↗</a>,
+              log in with your Spotify account, and click <strong>Create app</strong>.
+              Any name works (e.g. "StreamKit"). Under <strong>APIs used</strong>, select <strong>Web API</strong>.
+            </p>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <h4>Add the Redirect URI</h4>
+            <p>
+              In your new app's <strong>Settings</strong>, find <strong>Redirect URIs</strong> and add the URL below <em>exactly</em> as shown — then click <strong>Save</strong>.
+            </p>
+            <div class="copy-row">
+              <input type="text" id="spotifyRedirectUri" readonly>
+              <button class="copy-btn" onclick="copyVal('spotifyRedirectUri', this)">Copy</button>
+            </div>
+            <p style="margin-top:8px">
+              ⚠️ This URL is tied to the port StreamKit is running on. If you change ports, update this URI in your Spotify app settings.
+            </p>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <h4>Copy your Client ID</h4>
+            <p>
+              Still in your app's Settings page, copy the <strong>Client ID</strong> — it's a 32-character hex string.
+              You do <em>not</em> need the Client Secret (StreamKit uses PKCE, which is secret-free).
+            </p>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num">4</div>
+          <div class="step-body">
+            <h4>Connect in StreamKit</h4>
+            <p>
+              Open the <strong>Spotify</strong> tool from the sidebar, paste your Client ID, and click
+              <strong>Connect to Spotify</strong>. You'll be redirected to Spotify to authorize, then
+              brought back automatically.
+            </p>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num green">5</div>
+          <div class="step-body">
+            <h4>Set your Twitch channel &amp; go live</h4>
+            <p>
+              Back in the Spotify tool, enter your Twitch channel name and click <strong>Connect</strong>.
+              Viewers can now type <code>!sr song name</code> or <code>!sr artist - song</code>.
+              Toggle <strong>Auto-add</strong> to queue requests instantly, or leave it off to approve each one manually.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ OBS ═══ -->
+  <div class="tab-content" id="tab-obs">
+    <div class="section">
+      <div class="section-title">📺 Adding Overlays to OBS</div>
+      <div class="section-sub">
+        StreamKit has four OBS-ready overlays with transparent backgrounds.
+        Add each one as a <strong>Browser Source</strong> in OBS.
+      </div>
+
+      <div class="callout info">
+        <span class="callout-icon">ℹ️</span>
+        <span>StreamKit must be running (<code>serve.py</code>) for OBS to load the overlays. They auto-refresh — no manual reload needed.</span>
+      </div>
+
+      <ol class="obs-steps" style="margin-bottom:24px">
+        <li>In OBS, click <strong>+</strong> in the Sources panel and choose <strong>Browser</strong>.</li>
+        <li>Give it a name, then paste the URL from below into the <strong>URL</strong> field.</li>
+        <li>Set width and height as suggested, then click <strong>OK</strong>.</li>
+        <li>Position and resize the source on your scene as needed.</li>
+      </ol>
+
+      <div class="overlay-list" id="overlayList"></div>
+    </div>
+  </div>
+
+  <!-- ═══ SOUNDS ═══ -->
+  <div class="tab-content" id="tab-sounds">
+    <div class="section">
+      <div class="section-title">🔊 Setting Up the Soundboard</div>
+      <div class="section-sub">
+        The soundboard plays audio files from the <code>assets/sounds/</code> folder.
+        Drop your files in, then configure the buttons in the Soundboard tool.
+      </div>
+
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <h4>Drop sound files into the sounds folder</h4>
+            <p>Copy your audio files into:</p>
+            <div class="copy-row">
+              <input type="text" id="soundsPath" readonly>
+              <button class="copy-btn" onclick="copyVal('soundsPath', this)">Copy</button>
+            </div>
+            <p style="margin-top:8px">Supported formats:</p>
+            <div class="sound-formats">
+              <span class="fmt-chip">.mp3</span>
+              <span class="fmt-chip">.wav</span>
+              <span class="fmt-chip">.ogg</span>
+              <span class="fmt-chip">.flac</span>
+              <span class="fmt-chip">.m4a</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <h4>Configure a button</h4>
+            <p>
+              Open the <strong>Soundboard</strong> tool, hover over any button, and click the <strong>✏️</strong> icon.
+              Set the label, choose an icon, and type the filename exactly as it appears in <code>assets/sounds/</code>
+              — for example: <code>hype.mp3</code>
+            </p>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num green">3</div>
+          <div class="step-body">
+            <h4>Test it</h4>
+            <p>
+              Click the button — it should flash green while playing.
+              Use the volume slider at the top to adjust.
+              Keyboard shortcuts <kbd>1</kbd>–<kbd>9</kbd> trigger the first 9 buttons while the Soundboard is focused.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="callout warn" style="margin-top:8px">
+        <span class="callout-icon">⚠️</span>
+        <span>Browsers block audio until the user interacts with the page. Click anything in StreamKit first, then sounds will play normally.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ TWITCH ═══ -->
+  <div class="tab-content" id="tab-twitch">
+    <div class="section">
+      <div class="section-title">🟣 Connect Twitch</div>
+      <div class="section-sub">
+        Linking Twitch unlocks live status in the sidebar, auto-fills your channel in the Spotify song
+        request tool, and enables one-click clip creation from the Clip Notes tool.
+      </div>
+
+      <div class="callout info">
+        <span class="callout-icon">ℹ️</span>
+        <span>Chat is read <strong>anonymously</strong> for <code>!sr</code> requests — no Twitch login needed for that.
+        This setup is for the extra integrations above.</span>
+      </div>
+
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <h4>Create a Twitch Developer App</h4>
+            <p>
+              Go to the <a class="ext-link" href="https://dev.twitch.tv/console" target="_blank">Twitch Dev Console ↗</a>
+              and click <strong>Register Your Application</strong>. Any name works (e.g. "StreamKit").
+              Set <strong>Category</strong> to <em>Website Integration</em>.
+            </p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <h4>Add the OAuth Redirect URL</h4>
+            <p>Under <strong>OAuth Redirect URLs</strong> in your app, add the URL below, then click <strong>Create</strong>.</p>
+            <div class="copy-row">
+              <input type="text" id="twitchRedirectUri" readonly>
+              <button class="copy-btn" onclick="copyVal('twitchRedirectUri', this)">Copy</button>
+            </div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <h4>Connect from the StreamKit sidebar</h4>
+            <p>
+              Click <strong>Connect Twitch</strong> at the bottom of the left sidebar,
+              paste your <strong>Client ID</strong> from the Twitch Dev Console, and click <strong>Connect</strong>.
+              You'll be redirected to Twitch to authorize, then returned automatically.
+            </p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num green">4</div>
+          <div class="step-body">
+            <h4>You're live-aware</h4>
+            <p>
+              Once connected, the sidebar footer shows your profile picture and display name.
+              While you're streaming, a pulsing <strong style="color:#e74c3c">● LIVE</strong> badge
+              appears at the top of the sidebar with your viewer count and current game.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="callout success" style="margin-top:24px">
+        <span class="callout-icon">✅</span>
+        <div>
+          <strong>What unlocks after connecting:</strong><br>
+          · Live status + viewer count in sidebar<br>
+          · Twitch channel auto-filled in Spotify &amp; Raid Tracker tools<br>
+          · "Create Clip" button in Clip Notes<br>
+          · Stream Info manager (edit title, category, tags)<br>
+          · Raid Tracker auto-connects to your channel
+        </div>
+      </div>
+      <div class="callout warn" style="margin-top:12px">
+        <span class="callout-icon">⚠️</span>
+        <span>
+          <strong>Stream Info requires the <code>channel:manage:broadcast</code> scope.</strong>
+          If you connected Twitch before v1.1, disconnect and reconnect to upgrade your token permissions.
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ SHORTCUTS ═══ -->
+  <div class="tab-content" id="tab-shortcuts">
+    <div class="section">
+      <div class="section-title">⌨️ Keyboard Shortcuts</div>
+      <div class="section-sub">All shortcuts work when focus is on StreamKit (not inside a text input).</div>
+
+      <table class="shortcut-table">
+        <thead>
+          <tr>
+            <th>Key</th>
+            <th>Action</th>
+            <th>Where</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><kbd>1</kbd> – <kbd>9</kbd></td>
+            <td>Switch to tool by position</td>
+            <td>Dashboard sidebar</td>
+          </tr>
+          <tr>
+            <td><kbd>Space</kbd></td>
+            <td>Mark clip instantly</td>
+            <td>Clip Notes</td>
+          </tr>
+          <tr>
+            <td><kbd>1</kbd> – <kbd>9</kbd></td>
+            <td>Play soundboard button</td>
+            <td>Soundboard</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="section">
+      <div class="section-title">💬 Chat Commands</div>
+      <div class="section-sub">Commands your viewers can use in Twitch chat (requires Spotify + Twitch connected).</div>
+
+      <table class="shortcut-table">
+        <thead>
+          <tr>
+            <th>Command</th>
+            <th>Example</th>
+            <th>Effect</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>!sr &lt;song&gt;</code></td>
+            <td><code>!sr Bohemian Rhapsody</code></td>
+            <td>Request a song by title</td>
+          </tr>
+          <tr>
+            <td><code>!sr &lt;artist&gt; - &lt;song&gt;</code></td>
+            <td><code>!sr Queen - Bohemian Rhapsody</code></td>
+            <td>Request with artist for accuracy</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    // ── Tab switching ──
+    function switchTab(id) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      document.querySelector(`[onclick="switchTab('${id}')"]`).classList.add('active');
+      document.getElementById('tab-' + id).classList.add('active');
+    }
+
+    // ── Dynamic URLs ──
+    const origin = window.location.origin;
+
+    // Spotify redirect URI
+    document.getElementById('spotifyRedirectUri').value = origin + '/src/tools/spotify/callback.html';
+
+    // Twitch redirect URI
+    document.getElementById('twitchRedirectUri').value = origin + '/src/tools/twitch/callback.html';
+
+    // Sounds folder path — derive from current script location
+    // origin is like http://localhost:3001, sounds are at /assets/sounds/
+    document.getElementById('soundsPath').value = origin + '/assets/sounds/';
+
+    // ── OBS Overlays ──
+    const overlays = [
+      {
+        name: '🎵 Now Playing',
+        path: '/src/tools/spotify/overlay.html',
+        desc: 'Shows the current Spotify track with album art, artist, and a live progress bar. Auto-hides when nothing is playing.',
+        w: 360, h: 90,
+      },
+      {
+        name: '📊 W/L Record',
+        path: '/src/tools/wl-tracker/overlay.html',
+        desc: 'Displays wins / losses / draws with win rate and current streak. Updates every 2 seconds.',
+        w: 280, h: 100,
+      },
+      {
+        name: '⏱ Timer Stack',
+        path: '/src/tools/timers/overlay.html',
+        desc: 'Shows all currently running timers in a vertical stack. Timers that hit zero flash red.',
+        w: 300, h: 120,
+      },
+      {
+        name: '🎯 Goal Tracker',
+        path: '/src/tools/goal-tracker/overlay.html',
+        desc: 'Renders all active goals as progress bars. Turns green and animates when a goal is reached.',
+        w: 320, h: 120,
+      },
+    ];
+
+    const list = document.getElementById('overlayList');
+    overlays.forEach(o => {
+      const url = origin + o.path;
+      const card = document.createElement('div');
+      card.className = 'overlay-card';
+      card.innerHTML = `
+        <div class="overlay-header">
+          <span class="overlay-name">${o.name}</span>
+          <span class="overlay-size">Recommended: ${o.w} × ${o.h} px</span>
+        </div>
+        <div class="overlay-desc">${o.desc}</div>
+        <div class="copy-row">
+          <input type="text" value="${url}" readonly class="ov-url">
+          <button class="copy-btn" onclick="copyVal(null, this, '${url}')">Copy URL</button>
+        </div>
+      `;
+      list.appendChild(card);
+    });
+
+    // ── Copy helper ──
+    function copyVal(inputId, btn, directVal) {
+      const val = directVal || document.getElementById(inputId).value;
+      navigator.clipboard.writeText(val).catch(() => {});
+      btn.textContent = '✓ Copied!';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = directVal ? 'Copy URL' : 'Copy'; btn.classList.remove('copied'); }, 2000);
+    }
+  </script>
+</body>
+</html>

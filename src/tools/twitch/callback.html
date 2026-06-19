@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Connecting Twitch…</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0f0f0f; color: #f0f0f0;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      display: flex; align-items: center; justify-content: center;
+      min-height: 100vh; flex-direction: column; gap: 16px;
+    }
+    .spinner {
+      width: 40px; height: 40px;
+      border: 3px solid #333; border-top-color: #9147ff;
+      border-radius: 50%; animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    p { color: #888; font-size: 15px; }
+    .error { color: #e74c3c; max-width: 400px; text-align: center; line-height: 1.5; }
+  </style>
+</head>
+<body>
+  <div class="spinner" id="spinner"></div>
+  <p id="msg">Connecting Twitch…</p>
+
+  <script>
+    async function finish() {
+      // Twitch implicit grant: token is in the URL hash
+      const hash   = new URLSearchParams(window.location.hash.slice(1));
+      const token  = hash.get('access_token');
+      const error  = hash.get('error');
+
+      if (error || !token) {
+        showError('Twitch auth failed: ' + (error || 'no token returned'));
+        return;
+      }
+
+      const clientId = localStorage.getItem('streamkit_twitch_client_id');
+      if (!clientId) { showError('Missing Twitch Client ID — please try again.'); return; }
+
+      // Fetch user profile
+      try {
+        const res = await fetch('https://api.twitch.tv/helix/users', {
+          headers: { 'Authorization': 'Bearer ' + token, 'Client-Id': clientId }
+        });
+        if (!res.ok) { showError('Could not fetch Twitch profile (status ' + res.status + ')'); return; }
+        const data = await res.json();
+        const user = data.data?.[0];
+        if (!user) { showError('No user data returned from Twitch.'); return; }
+
+        localStorage.setItem('streamkit_twitch_token', token);
+        localStorage.setItem('streamkit_twitch_user', JSON.stringify({
+          id:                user.id,
+          login:             user.login,
+          display_name:      user.display_name,
+          profile_image_url: user.profile_image_url,
+        }));
+
+        document.getElementById('msg').textContent = 'Connected as ' + user.display_name + '! Redirecting…';
+        setTimeout(() => { window.location.href = '../../main.html'; }, 700);
+      } catch(e) {
+        showError('Network error: ' + e.message);
+      }
+    }
+
+    function showError(msg) {
+      document.getElementById('spinner').style.display = 'none';
+      const p = document.getElementById('msg');
+      p.className = 'error';
+      p.innerHTML = msg + '<br><br><a href="../../main.html" style="color:#9147ff">← Back to StreamKit</a>';
+    }
+
+    finish();
+  </script>
+</body>
+</html>

@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StreamKit</title>
+  <style>
+    :root {
+      --bg:      #0f0f0f;
+      --bg2:     #1a1a1a;
+      --bg3:     #242424;
+      --border:  #2e2e2e;
+      --text:    #f0f0f0;
+      --muted:   #666;
+      --accent:  #7c6af7;
+      --green:   #2ecc71;
+      --red:     #e74c3c;
+      --twitch:  #9147ff;
+      --sidebar-w: 210px;
+    }
+
+    /* ── Themes ── */
+    :root[data-theme="midnight"] { --bg:#000000; --bg2:#07101c; --bg3:#0e1a2e; --border:#18283d; --muted:#5a7a9a; --accent:#3b9ef5; }
+    :root[data-theme="ember"]    { --bg:#0f0a06; --bg2:#1c1008; --bg3:#28180c; --border:#3a2210; --muted:#8a6040; --accent:#e8733a; }
+    :root[data-theme="forest"]   { --bg:#070f09; --bg2:#0c1a10; --bg3:#112318; --border:#1a3422; --muted:#4a7a5a; --accent:#3dba72; }
+    :root[data-theme="rose"]     { --bg:#0f080c; --bg2:#1c0e16; --bg3:#281520; --border:#3a1a2c; --muted:#8a4a6a; --accent:#e8449a; }
+    :root[data-theme="slate"]    { --bg:#080810; --bg2:#0f0f1e; --bg3:#16162c; --border:#22223a; --muted:#5a5a8a; --accent:#6eb5ff; }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(--text);
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
+
+    .layout { display: flex; height: 100vh; }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      width: var(--sidebar-w);
+      flex-shrink: 0;
+      background: linear-gradient(180deg,
+        color-mix(in srgb, var(--accent) 5%, var(--bg2)) 0%,
+        var(--bg2) 35%);
+      border-right: 1px solid var(--border);
+      box-shadow: 1px 0 12px rgba(0,0,0,0.35);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* Brand */
+    .sidebar-brand {
+      padding: 14px 14px 12px;
+      border-bottom: 1px solid color-mix(in srgb, var(--accent) 12%, var(--border));
+      flex-shrink: 0;
+    }
+    .brand-row { display: flex; align-items: center; justify-content: space-between; }
+    .brand-title {
+      font-size: 16px; font-weight: 800; letter-spacing: -0.3px;
+      background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 55%, #e0d9ff));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      filter: drop-shadow(0 0 8px color-mix(in srgb, var(--accent) 35%, transparent));
+    }
+    .live-pill {
+      display: none;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      border-radius: 10px;
+      background: rgba(231,76,60,0.15);
+      border: 1px solid rgba(231,76,60,0.35);
+      font-size: 10px;
+      font-weight: 800;
+      color: var(--red);
+      letter-spacing: 0.5px;
+    }
+    .live-pill.show { display: flex; }
+    .live-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--red);
+      animation: pulse-live 1.4s ease infinite;
+    }
+    @keyframes pulse-live {
+      0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(231,76,60,0.5); }
+      50%       { opacity: 0.7; box-shadow: 0 0 0 4px rgba(231,76,60,0); }
+    }
+    .brand-sub { font-size: 10px; color: var(--muted); margin-top: 3px; }
+
+    /* Nav */
+    .nav { flex: 1; padding: 6px 0; overflow-y: auto; }
+    .nav-item {
+      display: flex; align-items: center; gap: 9px;
+      padding: 9px 14px; cursor: pointer;
+      font-size: 13px; font-weight: 500; color: var(--muted);
+      border: none; background: none; width: 100%; text-align: left;
+      transition: background 0.14s, color 0.14s, transform 0.14s; position: relative;
+      font-family: inherit; border-radius: 0;
+    }
+    .nav-item:hover {
+      background: color-mix(in srgb, var(--accent) 7%, var(--bg3));
+      color: var(--text);
+      transform: translateX(2px);
+    }
+    .nav-item.active {
+      background: linear-gradient(90deg,
+        color-mix(in srgb, var(--accent) 20%, transparent) 0%,
+        color-mix(in srgb, var(--accent) 6%, transparent) 100%);
+      color: #fff;
+      font-weight: 700;
+    }
+    .nav-item.active::before {
+      content: ''; position: absolute; left: 0; top: 3px; bottom: 3px;
+      width: 3px;
+      background: linear-gradient(180deg,
+        color-mix(in srgb, var(--accent) 80%, #fff),
+        var(--accent));
+      border-radius: 0 3px 3px 0;
+      box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 70%, transparent);
+    }
+    .nav-icon  { font-size: 15px; flex-shrink: 0; }
+    .nav-label { flex: 1; }
+    .nav-badge {
+      font-size: 9px; padding: 2px 6px; border-radius: 8px;
+      background: color-mix(in srgb, var(--accent) 18%, transparent);
+      border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+      color: var(--accent); font-weight: 700;
+      animation: obs-badge-glow 2.4s ease-in-out infinite;
+    }
+    @keyframes obs-badge-glow {
+      0%, 100% { box-shadow: none; }
+      50%       { box-shadow: 0 0 6px color-mix(in srgb, var(--accent) 40%, transparent); }
+    }
+    .nav-badge-live {
+      font-size: 9px; padding: 2px 6px; border-radius: 8px;
+      background: var(--red); color: #fff; font-weight: 700;
+      animation: live-pulse 2s ease-in-out infinite;
+    }
+    @keyframes live-pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.5; }
+    }
+
+    /* ── Session stats widget ── */
+    .session-stats {
+      border-top: 1px solid var(--border);
+      background: var(--bg2);
+      padding: 12px 14px;
+      font-size: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+    .session-stat {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      line-height: 1.3;
+    }
+    .session-stat-label { color: var(--muted); flex-shrink: 0; }
+    .session-stat-value { color: var(--text); font-weight: 600; }
+    .nav-group-label {
+      padding: 10px 14px 3px; font-size: 9px; font-weight: 800;
+      color: color-mix(in srgb, var(--accent) 45%, var(--muted));
+      text-transform: uppercase; letter-spacing: 1.5px;
+    }
+
+    /* ── Sidebar footer: Twitch profile ── */
+    .sidebar-footer {
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    /* Connected state */
+    .twitch-profile {
+      display: none;
+      flex-direction: column;
+      padding: 10px 14px;
+      gap: 8px;
+    }
+    .twitch-profile.show { display: flex; }
+
+    .profile-row {
+      display: flex; align-items: center; gap: 9px;
+    }
+    .profile-avatar {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      object-fit: cover;
+      background: var(--bg3);
+      flex-shrink: 0;
+      border: 2px solid var(--twitch);
+    }
+    .profile-info { flex: 1; min-width: 0; }
+    .profile-name {
+      font-size: 13px; font-weight: 700; color: var(--text);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .profile-status { font-size: 11px; color: var(--muted); }
+
+    .stream-info {
+      display: none;
+      padding: 6px 10px;
+      background: rgba(231,76,60,0.08);
+      border: 1px solid rgba(231,76,60,0.2);
+      border-radius: 7px;
+      font-size: 11px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+    .stream-info.show { display: block; }
+    .stream-info strong { color: var(--text); }
+
+    .twitch-disconnect {
+      font-size: 11px; color: var(--muted); cursor: pointer;
+      background: none; border: none; font-family: inherit; text-align: left; padding: 0;
+    }
+    .twitch-disconnect:hover { color: var(--red); }
+
+    /* Disconnected state */
+    .twitch-connect-footer {
+      padding: 10px 14px;
+    }
+    .connect-twitch-btn {
+      width: 100%;
+      display: flex; align-items: center; justify-content: center; gap: 7px;
+      padding: 9px 12px;
+      background: rgba(145,71,255,0.12);
+      border: 1px solid rgba(145,71,255,0.35);
+      border-radius: 8px;
+      color: var(--twitch);
+      font-size: 13px; font-weight: 700;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+      font-family: inherit;
+    }
+    .connect-twitch-btn:hover {
+      background: rgba(145,71,255,0.22);
+      border-color: rgba(145,71,255,0.6);
+      box-shadow: 0 0 16px rgba(145,71,255,0.25);
+    }
+    .version-label { font-size: 10px; color: var(--muted); margin-top: 7px; text-align: center; }
+
+    /* ── Theme picker ── */
+    .theme-row {
+      display: flex; align-items: center; gap: 6px;
+      padding: 8px 14px;
+      border-bottom: 1px solid var(--border);
+    }
+    .theme-label { font-size: 9px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; flex-shrink: 0; }
+    .theme-swatches { display: flex; gap: 4px; flex-wrap: nowrap; }
+    .theme-swatch {
+      width: 16px; height: 16px; border-radius: 50%;
+      cursor: pointer; border: 2px solid transparent;
+      transition: transform 0.12s, border-color 0.15s, box-shadow 0.15s;
+      flex-shrink: 0;
+    }
+    .theme-swatch:hover { transform: scale(1.3); }
+    .theme-swatch.active {
+      border-color: rgba(255,255,255,0.9);
+      box-shadow: 0 0 6px rgba(255,255,255,0.35);
+    }
+
+    /* ── Content ── */
+    .content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+    .content-frame {
+      flex: 1; border: none; width: 100%; height: 100%;
+      background: radial-gradient(ellipse 60% 40% at 80% 10%,
+        color-mix(in srgb, var(--accent) 4%, var(--bg)) 0%,
+        var(--bg) 55%);
+      display: block;
+    }
+
+    /* ── Twitch Modal ── */
+    .modal-bg {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.82);
+      backdrop-filter: blur(4px);
+      z-index: 1000;
+      align-items: center; justify-content: center;
+    }
+    .modal-bg.open { display: flex; }
+    .modal {
+      background: linear-gradient(160deg,
+        color-mix(in srgb, var(--accent) 6%, var(--bg2)) 0%,
+        var(--bg2) 60%);
+      border: 1px solid color-mix(in srgb, var(--accent) 20%, var(--border));
+      border-radius: 18px; padding: 28px; width: 400px; max-width: 95vw;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.6),
+                  0 0 0 1px color-mix(in srgb, var(--accent) 8%, transparent);
+    }
+    .modal-header {
+      display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;
+    }
+    .modal-title { font-size: 18px; font-weight: 800; }
+    .modal-close {
+      background: none; border: none; color: var(--muted); cursor: pointer;
+      font-size: 22px; line-height: 1; padding: 0 4px; font-family: inherit;
+    }
+    .modal-close:hover { color: var(--text); }
+    .modal-steps { display: flex; flex-direction: column; gap: 14px; }
+    .modal-step { display: flex; gap: 12px; align-items: flex-start; }
+    .step-num {
+      width: 24px; height: 24px; border-radius: 50%;
+      background: var(--twitch); color: #fff;
+      font-size: 12px; font-weight: 800;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .step-body { flex: 1; }
+    .step-body h4 { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+    .step-body p  { font-size: 12px; color: var(--muted); line-height: 1.5; margin-bottom: 6px; }
+    .copy-row { display: flex; gap: 6px; }
+    .copy-row input {
+      flex: 1; font-family: monospace; font-size: 11px; color: #9147ff;
+      background: var(--bg3); border: 1px solid var(--border);
+      border-radius: 6px; padding: 6px 8px; outline: none;
+    }
+    .copy-row input:focus { border-color: var(--twitch); }
+    .copy-btn {
+      padding: 6px 12px; background: var(--bg3); border: 1px solid var(--border);
+      border-radius: 6px; color: var(--text); font-size: 12px; font-weight: 600;
+      cursor: pointer; white-space: nowrap; font-family: inherit;
+    }
+    .copy-btn:hover { background: var(--twitch); border-color: var(--twitch); color: #fff; }
+    .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
+    .btn-twitch {
+      padding: 11px 20px; background: var(--twitch); color: #fff;
+      border: none; border-radius: 8px; font-size: 14px; font-weight: 700;
+      cursor: pointer; font-family: inherit;
+    }
+    .btn-twitch:hover { filter: brightness(1.1); }
+    .btn-ghost-sm {
+      padding: 11px 16px; background: var(--bg3); border: 1px solid var(--border);
+      border-radius: 8px; font-size: 13px; color: var(--muted);
+      cursor: pointer; font-family: inherit;
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  </style>
+</head>
+<body>
+<div class="layout">
+
+  <!-- ── Sidebar ── -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-row">
+        <div class="brand-title">StreamKit</div>
+        <div class="live-pill" id="livePill"><div class="live-dot"></div>LIVE</div>
+      </div>
+      <div class="brand-sub" id="brandSub">Streamer Utility Suite</div>
+    </div>
+
+    <nav class="nav">
+      <div class="nav-group-label">Tools</div>
+
+      <button class="nav-item" data-tool="spotify" onclick="loadTool(this)">
+        <span class="nav-icon">🎵</span>
+        <span class="nav-label">Spotify</span>
+        <span class="nav-badge">OBS</span>
+      </button>
+      <button class="nav-item active" data-tool="wl-tracker" onclick="loadTool(this)">
+        <span class="nav-icon">📊</span>
+        <span class="nav-label">W/L Tracker</span>
+        <span class="nav-badge">OBS</span>
+      </button>
+      <button class="nav-item" data-tool="checklist" onclick="loadTool(this)">
+        <span class="nav-icon">✅</span><span class="nav-label">Checklist</span>
+      </button>
+      <button class="nav-item" data-tool="minigames" onclick="loadTool(this)">
+        <span class="nav-icon">🎮</span>
+        <span class="nav-label">Mini-Games</span>
+        <span class="nav-badge">OBS</span>
+      </button>
+      <button class="nav-item" data-tool="timers" onclick="loadTool(this)">
+        <span class="nav-icon">⏱</span>
+        <span class="nav-label">Timers</span>
+        <span class="nav-badge">OBS</span>
+      </button>
+      <button class="nav-item" data-tool="queue" onclick="loadTool(this)">
+        <span class="nav-icon">👥</span><span class="nav-label">Viewer Queue</span>
+      </button>
+      <button class="nav-item" data-tool="goal-tracker" onclick="loadTool(this)">
+        <span class="nav-icon">🎯</span>
+        <span class="nav-label">Goal Tracker</span>
+        <span class="nav-badge">OBS</span>
+      </button>
+      <button class="nav-item" data-tool="soundboard" onclick="loadTool(this)">
+        <span class="nav-icon">🔊</span><span class="nav-label">Soundboard</span>
+      </button>
+      <button class="nav-item" data-tool="clip-notes" onclick="loadTool(this)">
+        <span class="nav-icon">📋</span><span class="nav-label">Clip Notes</span>
+      </button>
+      <button class="nav-item" data-tool="chat-wall" onclick="loadTool(this)">
+        <span class="nav-icon">📌</span>
+        <span class="nav-label">Chat Wall</span>
+        <span class="nav-badge">OBS</span>
+      </button>
+      <button class="nav-item" data-tool="alerts" onclick="loadTool(this)">
+        <span class="nav-icon">🔔</span>
+        <span class="nav-label">Alerts</span>
+        <span class="nav-badge-live">LIVE</span>
+      </button>
+
+      <div class="nav-group-label" style="margin-top:6px">Twitch</div>
+      <button class="nav-item" data-tool="stream-info" onclick="loadTool(this)">
+        <span class="nav-icon">📡</span><span class="nav-label">Stream Info</span>
+      </button>
+      <button class="nav-item" data-tool="raids" onclick="loadTool(this)">
+        <span class="nav-icon">⚔️</span><span class="nav-label">Raid Tracker</span>
+      </button>
+      <button class="nav-item" data-tool="scratchpad" onclick="loadTool(this)">
+        <span class="nav-icon">📝</span><span class="nav-label">Scratch Pad</span>
+      </button>
+
+      <div class="nav-group-label" style="margin-top:6px">Help</div>
+      <button class="nav-item" data-tool="setup" onclick="loadTool(this)">
+        <span class="nav-icon">📖</span><span class="nav-label">Setup Guide</span>
+      </button>
+
+      <div class="session-stats">
+        <div class="session-stat">
+          <span class="session-stat-label">⏱</span>
+          <span class="session-stat-value" id="statSessionTime">0:00:00</span>
+        </div>
+        <div class="session-stat">
+          <span class="session-stat-label">🎮 W/L</span>
+          <span class="session-stat-value" id="statWL">—</span>
+        </div>
+        <div class="session-stat">
+          <span class="session-stat-label">🎯 Goals</span>
+          <span class="session-stat-value" id="statGoals">—</span>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Twitch profile footer -->
+    <div class="sidebar-footer">
+      <!-- Theme picker — always visible -->
+      <div class="theme-row">
+        <span class="theme-label">Theme</span>
+        <div class="theme-swatches" id="themeSwatches"></div>
+      </div>
+      <!-- Connected -->
+      <div class="twitch-profile" id="twitchProfile">
+        <div class="profile-row">
+          <img class="profile-avatar" id="profileAvatar" src="" alt="">
+          <div class="profile-info">
+            <div class="profile-name" id="profileName"></div>
+            <div class="profile-status" id="profileStatus">Twitch Connected</div>
+          </div>
+        </div>
+        <div class="stream-info" id="streamInfo"></div>
+        <button class="twitch-disconnect" onclick="disconnectTwitch()">Disconnect Twitch</button>
+      </div>
+      <!-- Disconnected -->
+      <div class="twitch-connect-footer" id="twitchConnectFooter">
+        <button class="connect-twitch-btn" onclick="showTwitchModal()">
+          <span>🟣</span> Connect Twitch
+        </button>
+        <div class="version-label">v1.1 · All data stored locally</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ── Content ── -->
+  <div class="content">
+    <iframe class="content-frame" id="toolFrame" src="tools/wl-tracker/index.html"></iframe>
+  </div>
+</div>
+
+<!-- ── Twitch Connect Modal ── -->
+<div class="modal-bg" id="twitchModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">🟣 Connect Twitch</div>
+      <button class="modal-close" onclick="closeTwitchModal()">×</button>
+    </div>
+    <div class="modal-steps">
+      <div class="modal-step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <h4>Create a Twitch Developer App</h4>
+          <p>Go to the <a href="https://dev.twitch.tv/console" target="_blank"
+            style="color:#9147ff;font-weight:600">Twitch Dev Console ↗</a>,
+            click <strong>Register Your Application</strong>. Any name works — e.g. "StreamKit".</p>
+        </div>
+      </div>
+      <div class="modal-step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <h4>Add this OAuth Redirect URL</h4>
+          <p>Under <strong>OAuth Redirect URLs</strong> in your app settings, add:</p>
+          <div class="copy-row">
+            <input type="text" id="twitchRedirectDisplay" readonly>
+            <button class="copy-btn" onclick="copyField('twitchRedirectDisplay', this)">Copy</button>
+          </div>
+          <p style="margin-top:6px">Set <strong>Category</strong> to <em>Website Integration</em>, then click <strong>Create</strong>.</p>
+        </div>
+      </div>
+      <div class="modal-step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <h4>Paste your Client ID</h4>
+          <div class="copy-row" style="margin-top:4px">
+            <input type="text" id="twitchClientIdInput" placeholder="Client ID from your Twitch app…" autocomplete="off" spellcheck="false">
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-ghost-sm" onclick="closeTwitchModal()">Cancel</button>
+      <button class="btn-twitch" onclick="startTwitchAuth()">Connect →</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ── Tool routing ──
+  const TOOL_PATHS = {
+    'spotify':      'tools/spotify/index.html',
+    'wl-tracker':   'tools/wl-tracker/index.html',
+    'checklist':    'tools/checklist/index.html',
+    'minigames':    'tools/minigames/index.html',
+    'timers':       'tools/timers/index.html',
+    'queue':        'tools/queue/index.html',
+    'goal-tracker': 'tools/goal-tracker/index.html',
+    'soundboard':   'tools/soundboard/index.html',
+    'clip-notes':   'tools/clip-notes/index.html',
+    'chat-wall':    'tools/chat-wall/index.html',
+    'stream-info':  'tools/stream-info/index.html',
+    'raids':        'tools/raids/index.html',
+    'scratchpad':   'tools/scratchpad/index.html',
+    'setup':        'tools/setup/index.html',
+    'alerts':       'tools/alerts/index.html',
+  };
+
+  function loadTool(btn) {
+    const path = TOOL_PATHS[btn.dataset.tool];
+    if (!path) return;
+    document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('toolFrame').src = path;
+  }
+
+  function openOverlay(relPath) {
+    window.open('tools/' + relPath, '_blank',
+      'width=640,height=220,menubar=no,toolbar=no,location=no,status=no');
+  }
+
+  // Keys 1–9 switch tools
+  const toolKeys = ['spotify','wl-tracker','checklist','minigames','timers','queue','goal-tracker','soundboard','clip-notes'];
+  document.addEventListener('keydown', e => {
+    if (e.target.tagName === 'INPUT') return;
+    const n = parseInt(e.key);
+    if (n >= 1 && n <= 9) {
+      const btn = document.querySelector(`[data-tool="${toolKeys[n-1]}"]`);
+      if (btn) loadTool(btn);
+    }
+  });
+
+  // ─────────────────────────────────────────────
+  //  TWITCH INTEGRATION
+  // ─────────────────────────────────────────────
+  const TW_TOKEN  = 'streamkit_twitch_token';
+  const TW_USER   = 'streamkit_twitch_user';
+  const TW_CLIENT = 'streamkit_twitch_client_id';
+  const TW_STREAM = 'streamkit_stream_status';
+
+  const TWITCH_REDIRECT = window.location.origin + '/src/tools/twitch/callback.html';
+  const TWITCH_SCOPES   = 'user:read:email clips:edit channel:manage:broadcast';
+
+  let streamStatusInterval = null;
+
+  function getTwitchToken()    { return localStorage.getItem(TW_TOKEN); }
+  function getTwitchUser()     { try { return JSON.parse(localStorage.getItem(TW_USER)); } catch(e) { return null; } }
+  function getTwitchClientId() { return localStorage.getItem(TW_CLIENT); }
+
+  async function twitchFetch(path) {
+    const token    = getTwitchToken();
+    const clientId = getTwitchClientId();
+    if (!token || !clientId) return null;
+    try {
+      const res = await fetch('https://api.twitch.tv/helix' + path, {
+        headers: { 'Authorization': 'Bearer ' + token, 'Client-Id': clientId }
+      });
+      if (res.status === 401) { disconnectTwitch(); return null; }
+      return res.ok ? res.json() : null;
+    } catch(e) { return null; }
+  }
+
+  // Broadcast Twitch context to iframes via localStorage so tools can read it
+  function broadcastTwitchContext() {
+    const user = getTwitchUser();
+    if (user) {
+      // Sync Twitch channel for tools that listen to chat (Spotify !sr, raids, etc.)
+      // Always overwrite so account switches propagate to dependent tools.
+      localStorage.setItem('streamkit_twitch_channel', user.login);
+    }
+  }
+
+  async function checkStreamStatus() {
+    const user = getTwitchUser();
+    if (!user) return;
+    const data = await twitchFetch('/streams?user_id=' + user.id);
+    if (!data) return;
+
+    const isLive = data.data && data.data.length > 0;
+    const stream = isLive ? data.data[0] : null;
+
+    // Persist so other tools can read it
+    localStorage.setItem(TW_STREAM, JSON.stringify({ isLive, stream }));
+
+    // Live pill in header
+    document.getElementById('livePill').classList.toggle('show', isLive);
+
+    // Stream info in sidebar footer
+    const infoEl = document.getElementById('streamInfo');
+    if (isLive && stream) {
+      infoEl.classList.add('show');
+      const viewers = stream.viewer_count >= 1000
+        ? (stream.viewer_count / 1000).toFixed(1) + 'K'
+        : stream.viewer_count;
+      infoEl.innerHTML =
+        `<strong>${viewers} viewers</strong> · ${escHtml(stream.game_name || 'No category')}` +
+        (stream.title ? `<br>${escHtml(stream.title)}` : '');
+    } else {
+      infoEl.classList.remove('show');
+    }
+  }
+
+  function renderTwitchSidebar() {
+    const user = getTwitchUser();
+    const profileEl = document.getElementById('twitchProfile');
+    const connectEl = document.getElementById('twitchConnectFooter');
+
+    if (user) {
+      profileEl.classList.add('show');
+      connectEl.style.display = 'none';
+      document.getElementById('profileAvatar').src = user.profile_image_url || '';
+      document.getElementById('profileName').textContent = user.display_name;
+      checkStreamStatus();
+      // Poll every 60s — clear any prior interval first to avoid duplicates
+      if (streamStatusInterval) clearInterval(streamStatusInterval);
+      streamStatusInterval = setInterval(checkStreamStatus, 60000);
+    } else {
+      profileEl.classList.remove('show');
+      connectEl.style.display = '';
+      document.getElementById('livePill').classList.remove('show');
+    }
+  }
+
+  function disconnectTwitch() {
+    localStorage.removeItem(TW_TOKEN);
+    localStorage.removeItem(TW_USER);
+    localStorage.removeItem(TW_STREAM);
+    document.getElementById('livePill').classList.remove('show');
+    document.getElementById('streamInfo').classList.remove('show');
+    renderTwitchSidebar();
+  }
+
+  // ── Modal ──
+  function showTwitchModal() {
+    document.getElementById('twitchRedirectDisplay').value = TWITCH_REDIRECT;
+    const saved = getTwitchClientId();
+    if (saved) document.getElementById('twitchClientIdInput').value = saved;
+    document.getElementById('twitchModal').classList.add('open');
+  }
+  function closeTwitchModal() {
+    document.getElementById('twitchModal').classList.remove('open');
+  }
+
+  function startTwitchAuth() {
+    const clientId = document.getElementById('twitchClientIdInput').value.trim();
+    if (!clientId) { alert('Paste your Twitch Client ID first.'); return; }
+    localStorage.setItem(TW_CLIENT, clientId);
+    const params = new URLSearchParams({
+      client_id:     clientId,
+      redirect_uri:  TWITCH_REDIRECT,
+      response_type: 'token',
+      scope:         TWITCH_SCOPES,
+      force_verify:  'false',
+    });
+    window.location.href = 'https://id.twitch.tv/oauth2/authorize?' + params;
+  }
+
+  function copyField(inputId, btn) {
+    const val = document.getElementById(inputId).value;
+    navigator.clipboard.writeText(val).catch(() => {});
+    btn.textContent = '✓ Copied';
+    setTimeout(() => { btn.textContent = 'Copy'; }, 2000);
+  }
+
+  function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
+
+  // ─────────────────────────────────────────────
+  //  THEME SYSTEM
+  // ─────────────────────────────────────────────
+  const THEME_KEY = 'streamkit_theme';
+
+  const THEMES = [
+    { id: 'default',  label: 'Default',  color: '#7c6af7' },
+    { id: 'midnight', label: 'Midnight', color: '#3b9ef5' },
+    { id: 'ember',    label: 'Ember',    color: '#e8733a' },
+    { id: 'forest',   label: 'Forest',   color: '#3dba72' },
+    { id: 'rose',     label: 'Rose',     color: '#e8449a' },
+    { id: 'slate',    label: 'Slate',    color: '#6eb5ff' },
+  ];
+
+  function applyThemeToDoc(doc, themeId) {
+    if (!doc || !doc.documentElement) return;
+    if (themeId === 'default') {
+      doc.documentElement.removeAttribute('data-theme');
+    } else {
+      doc.documentElement.setAttribute('data-theme', themeId);
+    }
+  }
+
+  function setTheme(themeId) {
+    localStorage.setItem(THEME_KEY, themeId);
+    // Apply to main shell
+    applyThemeToDoc(document, themeId);
+    // Apply to current iframe
+    const frame = document.getElementById('toolFrame');
+    try { applyThemeToDoc(frame.contentDocument, themeId); } catch(e) {}
+    // Update swatch active state
+    document.querySelectorAll('.theme-swatch').forEach(s =>
+      s.classList.toggle('active', s.dataset.tid === themeId));
+  }
+
+  function buildThemeSwatches() {
+    const saved = localStorage.getItem(THEME_KEY) || 'default';
+    const container = document.getElementById('themeSwatches');
+    container.innerHTML = '';
+    THEMES.forEach(t => {
+      const s = document.createElement('button');
+      s.className = 'theme-swatch' + (t.id === saved ? ' active' : '');
+      s.dataset.tid = t.id;
+      s.title = t.label;
+      s.style.background = t.color;
+      s.onclick = () => setTheme(t.id);
+      container.appendChild(s);
+    });
+    // Apply saved theme on load
+    applyThemeToDoc(document, saved);
+  }
+
+  // Re-apply theme whenever a new tool loads in the iframe
+  document.getElementById('toolFrame').addEventListener('load', () => {
+    const saved = localStorage.getItem(THEME_KEY) || 'default';
+    const frame = document.getElementById('toolFrame');
+    try { applyThemeToDoc(frame.contentDocument, saved); } catch(e) {}
+  });
+
+  // ── Init ──
+  broadcastTwitchContext();
+  renderTwitchSidebar();
+  buildThemeSwatches();
+
+  // ─────────────────────────────────────────────
+  //  SESSION STATS WIDGET
+  // ─────────────────────────────────────────────
+  const _sessionStart = Date.now();
+
+  function fmtSessionTime(ms) {
+    const totalSec = Math.floor(ms / 1000);
+    const h = Math.floor(totalSec / 3600);
+    const m = Math.floor((totalSec % 3600) / 60);
+    const s = totalSec % 60;
+    return h + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+  }
+
+  function updateSessionTimer() {
+    const el = document.getElementById('statSessionTime');
+    if (el) el.textContent = fmtSessionTime(Date.now() - _sessionStart);
+  }
+
+  function updateSessionStats() {
+    // W/L
+    const wlEl = document.getElementById('statWL');
+    if (wlEl) {
+      try {
+        const raw = localStorage.getItem('streamkit_wl_record');
+        if (raw) {
+          const rec = JSON.parse(raw);
+          const w = rec.wins   != null ? rec.wins   : 0;
+          const l = rec.losses != null ? rec.losses : 0;
+          wlEl.textContent = w + 'W · ' + l + 'L';
+        } else {
+          wlEl.textContent = '—';
+        }
+      } catch(e) { wlEl.textContent = '—'; }
+    }
+
+    // Goals
+    const goalsEl = document.getElementById('statGoals');
+    if (goalsEl) {
+      try {
+        const raw = localStorage.getItem('streamkit_goals');
+        if (raw) {
+          const goals = JSON.parse(raw);
+          if (Array.isArray(goals) && goals.length > 0) {
+            const remaining = goals.filter(g => g.done !== true).length;
+            goalsEl.textContent = remaining > 0 ? remaining + ' left' : '✓';
+          } else {
+            goalsEl.textContent = '—';
+          }
+        } else {
+          goalsEl.textContent = '—';
+        }
+      } catch(e) { goalsEl.textContent = '—'; }
+    }
+  }
+
+  updateSessionTimer();
+  updateSessionStats();
+  setInterval(updateSessionTimer, 1000);
+  setInterval(updateSessionStats, 5000);
+</script>
+</body>
+</html>

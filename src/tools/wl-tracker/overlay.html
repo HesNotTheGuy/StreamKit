@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>W/L Overlay — StreamKit</title>
+  <link rel="stylesheet" href="../../../assets/styles/overlay.css">
+  <script src="../../../assets/js/util.js"></script>
+  <style>
+    /* ── Wrapper ── */
+    .wl-wrap {
+      display: inline-flex;
+      flex-direction: column;
+      gap: 4px;
+      padding: 10px 14px;
+      --chrome: #7c6af7; /* overridden per-render from saved style */
+    }
+
+    /* ── Backgrounds ── */
+    .bg-glass {
+      background: rgba(0,0,0,0.55);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border-radius: 12px;
+      border: 1px solid color-mix(in srgb, var(--chrome) 35%, transparent);
+      padding: 12px 18px;
+    }
+    .bg-solid {
+      background: rgba(12,12,12,0.92);
+      border-radius: 12px;
+      border: 1px solid color-mix(in srgb, var(--chrome) 22%, transparent);
+      padding: 12px 18px;
+    }
+
+    /* ── Text elements ── */
+    .game-lbl {
+      font-size: 13px;
+      color: color-mix(in srgb, var(--chrome) 40%, rgba(255,255,255,0.75));
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+    }
+    .bg-none .game-lbl { text-shadow: 1px 1px 3px rgba(0,0,0,0.95); }
+
+    .stats-row {
+      color: color-mix(in srgb, var(--chrome) 30%, rgba(255,255,255,0.8));
+      font-weight: 600;
+    }
+    .bg-none .stats-row { text-shadow: 1px 1px 3px rgba(0,0,0,0.9); }
+
+    /* ── Numbers ── */
+    .rn { font-weight: 800; line-height: 1; }
+    /* bg-none plain: heavy outline for readability on any scene */
+    .bg-none.effect-none .rn {
+      text-shadow: 2px 2px 0 #000, -1px -1px 0 #000,
+                   2px -2px 0 #000, -2px 2px 0 #000,
+                   0 0 14px rgba(0,0,0,0.95);
+    }
+    /* glass/solid plain: soft shadow */
+    .bg-glass.effect-none .rn, .bg-solid.effect-none .rn {
+      text-shadow: 1px 1px 3px rgba(0,0,0,0.7);
+    }
+    /* outline effect: stroke applied inline per-element via -webkit-text-stroke */
+    /* glow effect: text-shadow applied inline per-element */
+
+    /* Separator */
+    .rn-sep {
+      font-weight: 700;
+      color: color-mix(in srgb, var(--chrome) 55%, rgba(255,255,255,0.3));
+    }
+    .bg-none .rn-sep { text-shadow: 1px 1px 3px rgba(0,0,0,0.9); }
+
+    /* ── Sizes (horizontal) ── */
+    .size-sm .rn        { font-size: 30px; }
+    .size-sm .rn-sep    { font-size: 18px; }
+    .size-sm .stats-row { font-size: 11px; }
+    .size-sm .game-lbl  { font-size: 11px; }
+
+    .size-md .rn        { font-size: 46px; }
+    .size-md .rn-sep    { font-size: 28px; }
+    .size-md .stats-row { font-size: 14px; }
+    .size-md .game-lbl  { font-size: 13px; }
+
+    .size-lg .rn        { font-size: 64px; }
+    .size-lg .rn-sep    { font-size: 38px; }
+    .size-lg .stats-row { font-size: 18px; }
+    .size-lg .game-lbl  { font-size: 16px; }
+
+    /* ── Horizontal layout ── */
+    .layout-horizontal .record-row {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+    }
+
+    /* ── Pill layout ── */
+    .layout-pill .record-pill {
+      display: flex;
+      align-items: center;
+      border-radius: 999px;
+      overflow: hidden;
+      border: 1px solid color-mix(in srgb, var(--chrome) 45%, transparent);
+    }
+    .bg-none .layout-pill .record-pill  { background: rgba(0,0,0,0.45); }
+    .bg-glass .layout-pill .record-pill { background: rgba(0,0,0,0.2);  }
+    .bg-solid .layout-pill .record-pill { background: rgba(255,255,255,0.04); }
+
+    .layout-pill .pill-seg { font-weight: 800; line-height: 1; }
+    .layout-pill .pill-sep {
+      width: 1px;
+      background: color-mix(in srgb, var(--chrome) 45%, transparent);
+      align-self: stretch;
+    }
+    .bg-none.layout-pill .pill-seg {
+      text-shadow: 1px 1px 4px rgba(0,0,0,0.9);
+    }
+
+    .size-sm.layout-pill .pill-seg { font-size: 22px; padding: 5px 12px; }
+    .size-md.layout-pill .pill-seg { font-size: 30px; padding: 7px 16px; }
+    .size-lg.layout-pill .pill-seg { font-size: 40px; padding: 9px 20px; }
+
+    /* ── Vertical layout ── */
+    .layout-vertical .vert-inner {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .layout-vertical .vert-row {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+    }
+    .layout-vertical .v-num {
+      font-weight: 800;
+      min-width: 1.4ch;
+      text-align: right;
+    }
+    .layout-vertical .v-lbl {
+      font-weight: 700;
+      color: color-mix(in srgb, var(--chrome) 55%, rgba(255,255,255,0.55));
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .bg-none .layout-vertical .v-num {
+      text-shadow: 2px 2px 0 #000, -1px -1px 0 #000, 0 0 10px rgba(0,0,0,0.9);
+    }
+    .bg-none .layout-vertical .v-lbl { text-shadow: 1px 1px 3px rgba(0,0,0,0.9); }
+
+    .size-sm.layout-vertical .v-num  { font-size: 28px; }
+    .size-sm.layout-vertical .v-lbl  { font-size: 11px; }
+    .size-sm.layout-vertical .stats-row { font-size: 10px; }
+
+    .size-md.layout-vertical .v-num  { font-size: 40px; }
+    .size-md.layout-vertical .v-lbl  { font-size: 14px; }
+    .size-md.layout-vertical .stats-row { font-size: 13px; }
+
+    .size-lg.layout-vertical .v-num  { font-size: 56px; }
+    .size-lg.layout-vertical .v-lbl  { font-size: 18px; }
+    .size-lg.layout-vertical .stats-row { font-size: 16px; }
+
+    /* ── Pop animation ── */
+    @keyframes num-pop {
+      0%   { transform: scale(1); }
+      40%  { transform: scale(1.35); filter: brightness(1.4); }
+      70%  { transform: scale(0.95); }
+      100% { transform: scale(1); filter: brightness(1); }
+    }
+    .num-changed {
+      animation: num-pop 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+      display: inline-block; /* needed for transform on inline elements */
+    }
+  </style>
+</head>
+<body>
+  <div class="wl-wrap" id="wrap"></div>
+
+  <script>
+    const KEY       = 'streamkit_wl_record';
+    const STYLE_KEY = 'streamkit_overlay_wl';
+
+    let prevData = null;
+
+    const DEFAULTS = {
+      font: 'system', colorW: '#2ecc71', colorL: '#e74c3c', colorD: '#f0a500',
+      showDraws: true, showWinRate: true, showStreak: true,
+      layout: 'horizontal', background: 'none', size: 'md',
+      effect: 'none', chromeColor: '#7c6af7',
+    };
+
+    function getStyle() {
+      try { return { ...DEFAULTS, ...JSON.parse(localStorage.getItem(STYLE_KEY)) }; }
+      catch(e) { return { ...DEFAULTS }; }
+    }
+
+    // Build inline style string for a colored number based on effect
+    function numStyle(color, effect) {
+      if (effect === 'glow') {
+        return `color:${color};text-shadow:0 0 18px ${color},0 0 36px ${color}88`;
+      }
+      if (effect === 'outline') {
+        return `color:${color};-webkit-text-stroke:2px rgba(0,0,0,0.85)`;
+      }
+      return `color:${color}`;
+    }
+
+    function update() {
+      const s    = getStyle();
+      const raw  = localStorage.getItem(KEY);
+      let data   = { wins:0, losses:0, draws:0, streak:0, streakType:null, game:'' };
+      if (raw) { try { Object.assign(data, JSON.parse(raw)); } catch(e) {} }
+
+      const wrap = document.getElementById('wrap');
+      const eff  = s.effect || 'none';
+      wrap.className = `wl-wrap layout-${s.layout||'horizontal'} bg-${s.background||'none'} size-${s.size||'md'} effect-${eff}`;
+      wrap.style.fontFamily = StreamKit.FONT_CSS[s.font] || StreamKit.FONT_CSS.system;
+      wrap.style.setProperty('--chrome', s.chromeColor || '#7c6af7');
+
+      // Game label
+      const gameLblHtml = data.game
+        ? `<div class="game-lbl">${StreamKit.esc(data.game)}</div>`
+        : '';
+
+      // Stats row
+      const statParts = [];
+      if (s.showWinRate !== false) {
+        const total = (data.wins||0) + (data.losses||0);
+        if (total > 0) statParts.push(Math.round(((data.wins||0)/total)*100) + '% WR');
+      }
+      if (s.showStreak !== false && data.streak > 1 && data.streakType) {
+        statParts.push(`${data.streak}${data.streakType[0].toUpperCase()} streak`);
+      }
+      const statsHtml = statParts.length
+        ? `<div class="stats-row">${statParts.join(' · ')}</div>`
+        : '';
+
+      const showD = s.showDraws !== false;
+      const cW = s.colorW, cL = s.colorL, cD = s.colorD;
+
+      if (s.layout === 'pill') {
+        const drawHtml = showD
+          ? `<span class="pill-sep"></span><span class="pill-seg" style="${numStyle(cD,eff)}">${data.draws}D</span>`
+          : '';
+        wrap.innerHTML = `
+          ${gameLblHtml}
+          <div class="record-pill">
+            <span class="pill-seg" style="${numStyle(cW,eff)}">${data.wins}W</span>
+            <span class="pill-sep"></span>
+            <span class="pill-seg" style="${numStyle(cL,eff)}">${data.losses}L</span>
+            ${drawHtml}
+          </div>
+          ${statsHtml}`;
+
+      } else if (s.layout === 'vertical') {
+        const drawHtml = showD
+          ? `<div class="vert-row"><span class="v-num" style="${numStyle(cD,eff)}">${data.draws}</span><span class="v-lbl">Draws</span></div>`
+          : '';
+        wrap.innerHTML = `
+          ${gameLblHtml}
+          <div class="vert-inner">
+            <div class="vert-row"><span class="v-num" style="${numStyle(cW,eff)}">${data.wins}</span><span class="v-lbl">Wins</span></div>
+            <div class="vert-row"><span class="v-num" style="${numStyle(cL,eff)}">${data.losses}</span><span class="v-lbl">Losses</span></div>
+            ${drawHtml}
+          </div>
+          ${statsHtml}`;
+
+      } else {
+        // Horizontal (default)
+        const drawHtml = showD
+          ? `<span class="rn-sep">/</span><span class="rn" style="${numStyle(cD,eff)}">${data.draws}D</span>`
+          : '';
+        wrap.innerHTML = `
+          ${gameLblHtml}
+          <div class="record-row">
+            <span class="rn" style="${numStyle(cW,eff)}">${data.wins}W</span>
+            <span class="rn-sep">/</span>
+            <span class="rn" style="${numStyle(cL,eff)}">${data.losses}L</span>
+            ${drawHtml}
+          </div>
+          ${statsHtml}`;
+      }
+
+      // Animate numbers that increased since last tick
+      const nums = wrap.querySelectorAll('.rn, .pill-seg, .v-num');
+      const keys = ['wins', 'losses', 'draws'];
+      keys.forEach((k, i) => {
+        if (prevData && data[k] > prevData[k] && nums[i]) {
+          nums[i].classList.add('num-changed');
+          // no need to remove — element gets rebuilt on next tick
+        }
+      });
+      prevData = { wins: data.wins, losses: data.losses, draws: data.draws };
+    }
+
+    update();
+    setInterval(update, 2000);
+  </script>
+</body>
+</html>

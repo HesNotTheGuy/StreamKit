@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Alerts — StreamKit</title>
+  <link rel="stylesheet" href="../../../assets/styles/dashboard.css">
+  <script src="../../../assets/js/util.js"></script>
+  <style>
+    body { padding: 24px; max-width: 600px; }
+
+    .tool-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+    }
+
+    /* ── Auth card ── */
+    .auth-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px;
+      margin-bottom: 24px;
+    }
+    .auth-row {
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+      flex-wrap: wrap;
+    }
+    .auth-row .auth-field { flex: 1; min-width: 180px; }
+    .auth-row label { display: block; font-size: 12px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+    .connected-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .connected-dot {
+      width: 10px; height: 10px;
+      background: var(--green);
+      border-radius: 50%;
+      box-shadow: 0 0 6px var(--green);
+      flex-shrink: 0;
+    }
+    .connected-label { font-weight: 700; font-size: 15px; }
+    .connected-login { color: var(--accent); }
+
+    /* ── Toggle switch ── */
+    .toggle-switch {
+      position: relative;
+      display: inline-block;
+      width: 42px;
+      height: 24px;
+      flex-shrink: 0;
+    }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+    .toggle-track {
+      position: absolute;
+      inset: 0;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s;
+    }
+    .toggle-track::before {
+      content: '';
+      position: absolute;
+      left: 3px; top: 50%;
+      transform: translateY(-50%);
+      width: 16px; height: 16px;
+      background: var(--muted);
+      border-radius: 50%;
+      transition: left 0.2s, background 0.2s;
+    }
+    .toggle-switch input:checked + .toggle-track {
+      background: color-mix(in srgb, var(--accent) 25%, var(--bg3));
+      border-color: var(--accent);
+    }
+    .toggle-switch input:checked + .toggle-track::before {
+      left: 21px;
+      background: var(--accent);
+    }
+
+    /* ── Event cards ── */
+    .events-list { display: flex; flex-direction: column; gap: 14px; }
+
+    .event-card { }
+
+    .event-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .event-label {
+      font-size: 15px;
+      font-weight: 700;
+      flex: 1;
+    }
+    .event-vars {
+      font-size: 11px;
+      color: var(--muted);
+      font-family: 'Consolas', monospace;
+    }
+
+    .field-label {
+      display: block;
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 5px;
+    }
+    .field-group { margin-bottom: 10px; }
+    .field-group:last-child { margin-bottom: 0; }
+
+    .slider-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .slider-row input[type=range] {
+      flex: 1;
+      width: auto;
+      padding: 0;
+      border: none;
+      background: transparent;
+    }
+    .slider-val {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--accent);
+      min-width: 30px;
+      text-align: right;
+    }
+
+    .event-footer {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+    }
+
+    /* ── OBS copy row ── */
+    .obs-row {
+      margin-top: 28px;
+    }
+    .btn-copy-obs {
+      width: 100%;
+      padding: 10px 14px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+      text-align: center;
+    }
+    .btn-copy-obs:hover { background: var(--bg3); color: var(--text); border-color: var(--accent); }
+    .btn-copy-obs.copied { color: var(--green); border-color: var(--green); background: rgba(46,204,113,0.08); }
+
+    /* ── Disabled state ── */
+    .event-card.disabled { opacity: 0.55; }
+    .event-card.disabled .event-label { color: var(--muted); }
+  </style>
+</head>
+<body>
+
+  <div class="tool-header">
+    <h1>Alerts</h1>
+    <span style="font-size:13px;color:var(--muted)">Twitch EventSub</span>
+  </div>
+
+  <!-- Auth -->
+  <div class="auth-card" id="authCard">
+    <h3 style="margin-bottom:14px">Twitch Connection</h3>
+    <div id="authDisconnected">
+      <div class="auth-row">
+        <div class="auth-field">
+          <label for="clientIdInput">Client ID</label>
+          <input type="text" id="clientIdInput" placeholder="Your Twitch app Client ID">
+        </div>
+        <button class="btn btn-primary" onclick="connectTwitch()">Connect to Twitch</button>
+      </div>
+      <p style="margin-top:10px;font-size:12px;color:var(--muted)">
+        Create a free app at <a href="https://dev.twitch.tv/console" target="_blank" style="color:var(--accent)">dev.twitch.tv/console</a>.
+        Set the OAuth redirect to this page's URL with the path ending in <code style="color:var(--text);background:var(--bg3);padding:1px 5px;border-radius:4px">alerts/index.html</code>.
+      </p>
+    </div>
+    <div id="authConnected" style="display:none">
+      <div class="connected-row">
+        <div class="connected-dot"></div>
+        <span class="connected-label">Connected as <span class="connected-login" id="connectedLogin"></span></span>
+        <button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="disconnect()">Disconnect</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Event cards -->
+  <div class="events-list" id="eventsList"></div>
+
+  <!-- OBS link -->
+  <div class="obs-row">
+    <button class="btn-copy-obs" id="copyOBSBtn" onclick="copyOBSLink()">📋 Copy OBS Browser Source URL (overlay)</button>
+  </div>
+
+  <script>
+    const TOKEN_KEY  = 'streamkit_alerts_token';
+    const CONFIG_KEY = 'streamkit_alerts_config';
+    const TEST_KEY   = 'streamkit_alerts_test';
+
+    const EVENTS = [
+      {
+        key: 'follow',
+        label: 'Follow',
+        defaultText: '{user} just followed! 👋',
+        vars: '{user}',
+      },
+      {
+        key: 'subscribe',
+        label: 'Subscribe',
+        defaultText: '{user} just subscribed! 🎉',
+        vars: '{user}, {tier}',
+      },
+      {
+        key: 'resub',
+        label: 'Resub',
+        defaultText: '{user} resubbed for {months} months! 🔥',
+        vars: '{user}, {months}, {tier}, {message}',
+      },
+      {
+        key: 'gift_sub',
+        label: 'Gift Sub',
+        defaultText: '{user} gifted a sub to {recipient}! 🎁',
+        vars: '{user}, {recipient}, {tier}',
+      },
+      {
+        key: 'cheer',
+        label: 'Bits / Cheer',
+        defaultText: '{user} cheered {amount} bits! ⭐',
+        vars: '{user}, {amount}',
+      },
+      {
+        key: 'raid',
+        label: 'Raid',
+        defaultText: '{user} is raiding with {viewers} viewers! 🔴',
+        vars: '{user}, {viewers}',
+      },
+    ];
+
+    const ANIM_OPTIONS = ['fade', 'slide-up', 'pop'];
+
+    // ── State ────────────────────────────────────────────────────────────────
+    let tokenData = null;
+    let config = {};
+
+    function defaultConfig() {
+      const events = {};
+      EVENTS.forEach(e => {
+        events[e.key] = {
+          enabled: true,
+          text: e.defaultText,
+          imageUrl: '',
+          soundUrl: '',
+          duration: 6,
+          animation: 'slide-up',
+        };
+      });
+      return { events };
+    }
+
+    function loadState() {
+      try { tokenData = JSON.parse(localStorage.getItem(TOKEN_KEY)); } catch(e) { tokenData = null; }
+      try {
+        const raw = JSON.parse(localStorage.getItem(CONFIG_KEY));
+        config = raw || defaultConfig();
+        // fill in any missing event keys
+        EVENTS.forEach(e => {
+          if (!config.events[e.key]) {
+            const ev = EVENTS.find(ev => ev.key === e.key);
+            config.events[e.key] = {
+              enabled: true,
+              text: ev.defaultText,
+              imageUrl: '',
+              soundUrl: '',
+              duration: 6,
+              animation: 'slide-up',
+            };
+          }
+        });
+      } catch(e) { config = defaultConfig(); }
+    }
+
+    function saveConfig() {
+      localStorage.setItem(CONFIG_KEY, JSON.stringify(config));
+    }
+
+    // ── Auth ─────────────────────────────────────────────────────────────────
+    function connectTwitch() {
+      const cid = document.getElementById('clientIdInput').value.trim();
+      if (!cid) { alert('Please enter your Twitch Client ID.'); return; }
+      // store client ID temporarily so we can retrieve it after redirect
+      sessionStorage.setItem('streamkit_alerts_pending_cid', cid);
+      const redirectUri = encodeURIComponent(window.location.href.split('#')[0]);
+      const scope = encodeURIComponent('channel:read:subscriptions moderator:read:followers bits:read channel:read:redemptions');
+      const url = `https://id.twitch.tv/oauth2/authorize?response_type=token&client_id=${encodeURIComponent(cid)}&redirect_uri=${redirectUri}&scope=${scope}`;
+      window.location.href = url;
+    }
+
+    async function handleOAuthCallback() {
+      const hash = window.location.hash;
+      if (!hash.includes('access_token=')) return false;
+
+      const params = new URLSearchParams(hash.slice(1));
+      const access_token = params.get('access_token');
+      if (!access_token) return false;
+
+      // clean hash immediately
+      history.replaceState(null, '', window.location.pathname + window.location.search);
+
+      const cid = sessionStorage.getItem('streamkit_alerts_pending_cid') || '';
+      sessionStorage.removeItem('streamkit_alerts_pending_cid');
+
+      if (!cid) {
+        alert('Client ID was lost during redirect. Please enter your Client ID and reconnect.');
+        return false;
+      }
+
+      // validate token + fetch user info
+      try {
+        const resp = await fetch('https://api.twitch.tv/helix/users', {
+          headers: {
+            'Authorization': `Bearer ${access_token}`,
+            'Client-Id': cid,
+          },
+        });
+        if (!resp.ok) throw new Error('Token validation failed');
+        const data = await resp.json();
+        const user = data.data[0];
+        const token = {
+          access_token,
+          login: user.login,
+          broadcaster_id: user.id,
+          client_id: cid,
+          connected_at: Date.now(),
+        };
+        localStorage.setItem(TOKEN_KEY, JSON.stringify(token));
+        tokenData = token;
+        return true;
+      } catch(err) {
+        alert('Failed to validate Twitch token: ' + err.message);
+        return false;
+      }
+    }
+
+    function disconnect() {
+      localStorage.removeItem(TOKEN_KEY);
+      tokenData = null;
+      renderAuth();
+    }
+
+    function renderAuth() {
+      const dis = document.getElementById('authDisconnected');
+      const con = document.getElementById('authConnected');
+      if (tokenData && tokenData.access_token) {
+        dis.style.display = 'none';
+        con.style.display = 'block';
+        document.getElementById('connectedLogin').textContent = '@' + tokenData.login;
+      } else {
+        dis.style.display = 'block';
+        con.style.display = 'none';
+      }
+    }
+
+    // ── Event cards ──────────────────────────────────────────────────────────
+    function renderEvents() {
+      const list = document.getElementById('eventsList');
+      list.innerHTML = '';
+
+      EVENTS.forEach(evDef => {
+        const cfg = config.events[evDef.key];
+        const card = document.createElement('div');
+        card.className = 'card event-card' + (cfg.enabled ? '' : ' disabled');
+        card.id = 'card-' + evDef.key;
+
+        const animOptions = ANIM_OPTIONS.map(a =>
+          `<option value="${a}" ${cfg.animation === a ? 'selected' : ''}>${a.charAt(0).toUpperCase() + a.slice(1).replace('-',' ')}</option>`
+        ).join('');
+
+        card.innerHTML = `
+          <div class="event-header">
+            <label class="toggle-switch" title="${cfg.enabled ? 'Enabled' : 'Disabled'}">
+              <input type="checkbox" ${cfg.enabled ? 'checked' : ''}
+                onchange="setEnabled('${evDef.key}', this.checked)">
+              <span class="toggle-track"></span>
+            </label>
+            <span class="event-label">${evDef.label}</span>
+            <span class="event-vars">${evDef.vars}</span>
+          </div>
+
+          <div class="field-group">
+            <label class="field-label">Alert Text</label>
+            <input type="text" value="${esc(cfg.text)}" placeholder="${esc(evDef.defaultText)}"
+              oninput="setField('${evDef.key}', 'text', this.value)">
+          </div>
+
+          <div class="field-group">
+            <label class="field-label">Image / GIF URL <span style="font-weight:400;text-transform:none;letter-spacing:0">(optional)</span></label>
+            <input type="text" value="${esc(cfg.imageUrl)}" placeholder="https://…/alert.gif"
+              oninput="setField('${evDef.key}', 'imageUrl', this.value)">
+          </div>
+
+          <div class="field-group">
+            <label class="field-label">Sound URL <span style="font-weight:400;text-transform:none;letter-spacing:0">(optional)</span></label>
+            <input type="text" value="${esc(cfg.soundUrl)}" placeholder="https://…/alert.mp3"
+              oninput="setField('${evDef.key}', 'soundUrl', this.value)">
+          </div>
+
+          <div class="field-group">
+            <label class="field-label">Duration: <span id="dur-${evDef.key}" style="color:var(--accent)">${cfg.duration}s</span></label>
+            <div class="slider-row">
+              <input type="range" min="3" max="15" value="${cfg.duration}"
+                oninput="setDuration('${evDef.key}', this.value)">
+            </div>
+          </div>
+
+          <div class="field-group">
+            <label class="field-label">Entry Animation</label>
+            <select onchange="setField('${evDef.key}', 'animation', this.value)">${animOptions}</select>
+          </div>
+
+          <div class="event-footer">
+            <button class="btn btn-ghost btn-sm" onclick="testAlert('${evDef.key}')">▶ Test</button>
+          </div>
+        `;
+
+        list.appendChild(card);
+      });
+    }
+
+    // ── Setters ──────────────────────────────────────────────────────────────
+    function setEnabled(key, val) {
+      config.events[key].enabled = val;
+      saveConfig();
+      const card = document.getElementById('card-' + key);
+      if (card) card.classList.toggle('disabled', !val);
+    }
+
+    function setField(key, field, val) {
+      config.events[key][field] = val;
+      saveConfig();
+    }
+
+    function setDuration(key, val) {
+      config.events[key].duration = parseInt(val);
+      saveConfig();
+      const label = document.getElementById('dur-' + key);
+      if (label) label.textContent = val + 's';
+    }
+
+    // ── Test ─────────────────────────────────────────────────────────────────
+    function testAlert(key) {
+      const payload = {
+        event: key,
+        user: 'TestUser',
+        amount: 100,
+        viewers: 42,
+        months: 6,
+        tier: '1000',
+        recipient: 'AnotherUser',
+        message: 'Love the stream!',
+        ts: Date.now(),
+      };
+      localStorage.setItem(TEST_KEY, JSON.stringify(payload));
+    }
+
+    // ── OBS link ─────────────────────────────────────────────────────────────
+    function copyOBSLink() {
+      const url = window.location.href.replace('index.html', 'overlay.html');
+      navigator.clipboard.writeText(url).then(() => {
+        const btn = document.getElementById('copyOBSBtn');
+        btn.textContent = '✓ Copied!';
+        btn.classList.add('copied');
+        setTimeout(() => {
+          btn.textContent = '📋 Copy OBS Browser Source URL (overlay)';
+          btn.classList.remove('copied');
+        }, 2000);
+      });
+    }
+
+    // ── Helpers ──────────────────────────────────────────────────────────────
+    function esc(s) {
+      return String(s || '')
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+    }
+
+    // ── Init ─────────────────────────────────────────────────────────────────
+    async function init() {
+      loadState();
+
+      const callbackHandled = await handleOAuthCallback();
+      if (callbackHandled) loadState(); // reload after storing token
+
+      renderAuth();
+      renderEvents();
+    }
+
+    init();
+  </script>
+</body>
+</html>

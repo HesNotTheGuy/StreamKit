@@ -1,0 +1,1068 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spotify — StreamKit</title>
+  <link rel="stylesheet" href="../../../assets/styles/dashboard.css">
+  <script src="../../../assets/js/util.js"></script>
+  <style>
+    body { padding: 20px; max-width: 560px; }
+
+    /* ── Spotify green ── */
+    :root { --spotify: #1db954; --spotify-dark: #158a3e; }
+    .btn-spotify { background: var(--spotify); color: #fff; }
+    .btn-spotify:hover { filter: brightness(1.1); }
+
+    /* ── Setup view ── */
+    .setup-card { display: flex; flex-direction: column; gap: 20px; }
+    .step { display: flex; gap: 14px; align-items: flex-start; }
+    .step-num {
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #fff;
+      font-weight: 800;
+      font-size: 13px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .step-body { flex: 1; }
+    .step-body h3 { font-size: 15px; font-weight: 700; color: var(--text); text-transform: none; letter-spacing: 0; margin-bottom: 6px; }
+    .step-body p  { font-size: 13px; color: var(--muted); line-height: 1.5; margin-bottom: 8px; }
+    .copy-row { display: flex; gap: 6px; }
+    .copy-row input { flex: 1; font-size: 12px; font-family: monospace; color: var(--accent); }
+    .scope-list { font-size: 12px; color: var(--muted); line-height: 1.8; }
+
+    /* ── Connected view ── */
+    .main-view { display: flex; flex-direction: column; gap: 16px; }
+
+    /* Now Playing */
+    .np-card { }
+    .np-inner {
+      display: flex;
+      gap: 14px;
+      align-items: center;
+    }
+    .np-art {
+      width: 72px; height: 72px;
+      border-radius: 8px;
+      object-fit: cover;
+      flex-shrink: 0;
+      background: var(--bg3);
+    }
+    .np-info { flex: 1; min-width: 0; }
+    .np-track  { font-size: 17px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .np-artist { font-size: 13px; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .np-idle   { color: var(--muted); font-style: italic; font-size: 15px; }
+
+    .progress-row { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+    .progress-track { flex: 1; height: 5px; }
+    .progress-fill { transition: width 1s linear; }
+    .np-time { font-size: 12px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+    .np-controls { display: flex; gap: 8px; margin-top: 12px; }
+    .np-controls .btn { flex: 1; padding: 10px; font-size: 18px; }
+
+    .np-badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 3px 10px; border-radius: 12px;
+      font-size: 12px; font-weight: 700;
+      background: rgba(29,185,84,0.15); color: var(--spotify);
+      border: 1px solid rgba(29,185,84,0.3);
+    }
+    .np-badge.paused { background: var(--bg3); color: var(--muted); border-color: var(--border); }
+
+    /* ── Twitch section ── */
+    .twitch-card { }
+    .twitch-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .status-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--border);
+      display: inline-block;
+      margin-right: 6px;
+    }
+    .status-dot.live { background: var(--green); box-shadow: 0 0 6px var(--green); }
+    .status-dot.connecting { background: var(--yellow); animation: flash-red 0.8s infinite; }
+    .twitch-connect-row { display: flex; gap: 8px; }
+    .twitch-connect-row input { flex: 1; }
+    .twitch-hint { font-size: 12px; color: var(--muted); margin-top: 8px; }
+    .twitch-hint code { color: var(--accent); background: var(--bg3); padding: 1px 5px; border-radius: 4px; }
+
+    .auto-toggle-row { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; }
+    .toggle-label { font-size: 14px; font-weight: 600; }
+
+    /* Simple toggle switch */
+    .toggle-switch { position: relative; width: 44px; height: 24px; }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+    .toggle-knob {
+      position: absolute; inset: 0;
+      background: var(--border);
+      border-radius: 24px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .toggle-knob::before {
+      content: '';
+      position: absolute;
+      left: 3px; top: 3px;
+      width: 18px; height: 18px;
+      background: #fff;
+      border-radius: 50%;
+      transition: transform 0.2s;
+    }
+    .toggle-switch input:checked + .toggle-knob { background: var(--spotify); }
+    .toggle-switch input:checked + .toggle-knob::before { transform: translateX(20px); }
+
+    /* ── Request Queue ── */
+    .queue-card { }
+    .queue-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+
+    .req-list { display: flex; flex-direction: column; gap: 6px; max-height: 280px; overflow-y: auto; }
+    .req-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      background: var(--bg3);
+      border-radius: 8px;
+      border: 1px solid transparent;
+      transition: border-color 0.15s;
+    }
+    .req-item.added  { border-color: rgba(29,185,84,0.4); opacity: 0.6; }
+    .req-item.rejected { opacity: 0.35; }
+    .req-avatar {
+      font-size: 11px; font-weight: 700;
+      background: var(--accent);
+      color: #fff;
+      width: 26px; height: 26px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      text-transform: uppercase;
+    }
+    .req-body { flex: 1; min-width: 0; }
+    .req-user  { font-size: 11px; color: var(--muted); }
+    .req-song  { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .req-track-info { font-size: 12px; color: var(--spotify); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .req-actions { display: flex; gap: 5px; flex-shrink: 0; }
+    .req-badge { font-size: 11px; padding: 3px 8px; border-radius: 10px; font-weight: 700; }
+    .req-badge.added    { background: rgba(29,185,84,0.15); color: var(--spotify); }
+    .req-badge.rejected { background: rgba(231,76,60,0.15); color: var(--red); }
+
+    .queue-empty { color: var(--muted); text-align: center; padding: 20px; font-size: 14px; }
+
+    /* ── Manual Search ── */
+    .search-card { }
+    .search-row { display: flex; gap: 8px; margin-bottom: 10px; }
+    .search-row input { flex: 1; }
+    .search-results { display: flex; flex-direction: column; gap: 6px; }
+    .result-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 10px;
+      background: var(--bg3);
+      border-radius: 8px;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: border-color 0.15s;
+    }
+    .result-item:hover { border-color: var(--accent); }
+    .result-art { width: 40px; height: 40px; border-radius: 4px; object-fit: cover; background: var(--bg2); flex-shrink: 0; }
+    .result-info { flex: 1; min-width: 0; }
+    .result-name   { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .result-artist { font-size: 12px; color: var(--muted); }
+    .result-add { flex-shrink: 0; }
+
+    /* ── Disconnect link ── */
+    .disconnect-link {
+      display: block;
+      text-align: center;
+      font-size: 12px;
+      color: var(--muted);
+      cursor: pointer;
+      margin-top: 4px;
+    }
+    .disconnect-link:hover { color: var(--red); }
+
+    /* spinner */
+    .spinner {
+      display: inline-block;
+      width: 14px; height: 14px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      vertical-align: middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+  <!-- ═══ SETUP VIEW ═══ -->
+  <div id="setupView">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
+      <h1>Spotify</h1>
+      <span style="font-size:20px">🎵</span>
+    </div>
+    <div class="card setup-card">
+
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <h3>Create a Spotify Developer App</h3>
+          <p>Go to the Spotify Developer Dashboard, log in, and click <strong>Create app</strong>.<br>
+             Any name works — e.g. "StreamKit". Set the app type to <strong>Web API</strong>.</p>
+          <a href="https://developer.spotify.com/dashboard" target="_blank" class="btn btn-spotify btn-sm"
+             style="text-decoration:none;display:inline-flex">Open Spotify Dashboard ↗</a>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <h3>Add this Redirect URI to your app</h3>
+          <p>In your Spotify app settings, under <strong>Redirect URIs</strong>, add the URL below exactly as shown, then click <strong>Save</strong>.</p>
+          <div class="copy-row">
+            <input type="text" id="redirectUriDisplay" readonly>
+            <button class="btn btn-ghost btn-sm" onclick="copyRedirectUri()">Copy</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <h3>Paste your Client ID</h3>
+          <p>Found on your app's settings page under <strong>Client ID</strong>.</p>
+          <div class="copy-row">
+            <input type="text" id="clientIdInput" placeholder="Paste Client ID here…" autocomplete="off" spellcheck="false">
+          </div>
+          <p style="margin-top:8px">Scopes that will be requested:</p>
+          <div class="scope-list">
+            ✔ user-read-currently-playing<br>
+            ✔ user-read-playback-state<br>
+            ✔ user-modify-playback-state
+          </div>
+        </div>
+      </div>
+
+      <button class="btn btn-spotify btn-lg" onclick="startAuth()">Connect to Spotify</button>
+    </div>
+  </div>
+
+  <!-- ═══ CONNECTED VIEW ═══ -->
+  <div id="mainView" style="display:none">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <h1>Spotify</h1>
+        <span id="npBadge" class="np-badge paused">⏸ Paused</span>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="disconnectSpotify()">Disconnect</button>
+    </div>
+
+    <div class="main-view">
+
+      <!-- Now Playing -->
+      <div class="card np-card">
+        <h3 style="margin-bottom:12px">Now Playing</h3>
+        <div class="np-inner">
+          <img class="np-art" id="npArt" src="" alt="">
+          <div class="np-info">
+            <div class="np-track"  id="npTrack"><span class="np-idle">Nothing playing</span></div>
+            <div class="np-artist" id="npArtist"></div>
+          </div>
+        </div>
+        <div class="progress-row">
+          <span class="np-time" id="npPos">0:00</span>
+          <div class="progress-track"><div class="progress-fill" id="npFill" style="width:0%"></div></div>
+          <span class="np-time" id="npDur">0:00</span>
+        </div>
+        <div class="np-controls">
+          <button class="btn btn-ghost" onclick="spotifyAction('previous')" title="Previous">⏮</button>
+          <button class="btn btn-ghost" id="playPauseBtn" onclick="togglePlayPause()">▶</button>
+          <button class="btn btn-ghost" onclick="spotifyAction('next')" title="Skip">⏭</button>
+        </div>
+      </div>
+
+      <!-- Twitch Chat -->
+      <div class="card twitch-card">
+        <div class="twitch-header">
+          <h3 style="margin:0">
+            <span class="status-dot" id="twitchDot"></span>
+            Twitch Auto-Requests
+          </h3>
+          <span id="twitchStatusLabel" style="font-size:12px;color:var(--muted)">Disconnected</span>
+        </div>
+        <div class="twitch-connect-row" id="twitchConnectRow">
+          <input type="text" id="channelInput" placeholder="your_twitch_channel" maxlength="25"
+            onkeydown="if(event.key==='Enter') connectTwitch()">
+          <button class="btn btn-primary" onclick="connectTwitch()">Connect</button>
+        </div>
+        <div id="twitchConnectedRow" style="display:none">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <span style="font-size:14px;font-weight:600" id="connectedChannelLabel"></span>
+            <button class="btn btn-ghost btn-sm" onclick="disconnectTwitch()">Disconnect</button>
+          </div>
+        </div>
+        <div class="twitch-hint">
+          Viewers type <code>!sr &lt;song name&gt;</code> in chat to request a song.
+        </div>
+        <div class="auto-toggle-row">
+          <span class="toggle-label">Auto-add requests to Spotify queue</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="autoAddToggle" onchange="saveSettings()">
+            <span class="toggle-knob"></span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Request Queue -->
+      <div class="card queue-card">
+        <div class="queue-header">
+          <h3 style="margin:0">Request Queue <span id="queueBadge" style="color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0;font-size:13px"></span></h3>
+          <button class="btn btn-ghost btn-sm" onclick="clearQueue()">Clear</button>
+        </div>
+        <div class="req-list" id="reqList">
+          <div class="queue-empty">No requests yet — viewers type !sr in chat</div>
+        </div>
+      </div>
+
+      <!-- Manual Search -->
+      <div class="card search-card">
+        <h3 style="margin-bottom:10px">Search & Add</h3>
+        <div class="search-row">
+          <input type="text" id="searchInput" placeholder="Search for a song…"
+            onkeydown="if(event.key==='Enter') searchSpotify()">
+          <button class="btn btn-spotify" onclick="searchSpotify()">Search</button>
+        </div>
+        <div class="search-results" id="searchResults"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    // ═══════════════════════════════════════════════════════
+    //  CONSTANTS & STORAGE
+    // ═══════════════════════════════════════════════════════
+    const SCOPES = 'user-read-currently-playing user-read-playback-state user-modify-playback-state';
+    const KEY_CLIENT   = 'streamkit_spotify_client_id';
+    const KEY_TOKENS   = 'streamkit_spotify_tokens';
+    const KEY_REQUESTS = 'streamkit_spotify_requests';
+    const KEY_CHANNEL  = 'streamkit_twitch_channel';
+    const KEY_AUTOQ    = 'streamkit_spotify_autoqueue';
+    const KEY_NP       = 'streamkit_nowplaying';
+    const REDIRECT_URI = window.location.origin + '/src/tools/spotify/callback.html';
+
+    const get  = k        => { try { return JSON.parse(localStorage.getItem(k)); } catch(e) { return null; } };
+    const set  = (k,v)    => localStorage.setItem(k, JSON.stringify(v));
+    const rm   = k        => localStorage.removeItem(k);
+
+    function getTokens()   { return get(KEY_TOKENS); }
+    function getClientId() { return localStorage.getItem(KEY_CLIENT) || ''; }
+    function getRequests() { return get(KEY_REQUESTS) || []; }
+
+    // ═══════════════════════════════════════════════════════
+    //  PKCE HELPERS
+    // ═══════════════════════════════════════════════════════
+    function genVerifier(len = 96) {
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~';
+      const arr = new Uint8Array(len);
+      crypto.getRandomValues(arr);
+      return Array.from(arr, b => chars[b % chars.length]).join('');
+    }
+    async function genChallenge(verifier) {
+      const data = new TextEncoder().encode(verifier);
+      const hash = await crypto.subtle.digest('SHA-256', data);
+      return btoa(String.fromCharCode(...new Uint8Array(hash)))
+        .replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
+    }
+
+    // ═══════════════════════════════════════════════════════
+    //  AUTH
+    // ═══════════════════════════════════════════════════════
+    async function startAuth() {
+      const clientId = document.getElementById('clientIdInput').value.trim();
+      if (!clientId) { alert('Paste your Spotify Client ID first.'); return; }
+
+      localStorage.setItem(KEY_CLIENT, clientId);
+      localStorage.setItem('streamkit_spotify_redirect_uri', REDIRECT_URI);
+
+      const verifier   = genVerifier();
+      const challenge  = await genChallenge(verifier);
+      sessionStorage.setItem('streamkit_spotify_pkce_verifier', verifier);
+
+      const params = new URLSearchParams({
+        client_id:             clientId,
+        response_type:         'code',
+        redirect_uri:          REDIRECT_URI,
+        scope:                 SCOPES,
+        code_challenge_method: 'S256',
+        code_challenge:        challenge,
+      });
+      window.location.href = 'https://accounts.spotify.com/authorize?' + params;
+    }
+
+    function disconnectSpotify() {
+      if (!confirm('Disconnect Spotify? This removes your tokens.')) return;
+      rm(KEY_TOKENS);
+      disconnectTwitch();
+      showSetup();
+    }
+
+    // ═══════════════════════════════════════════════════════
+    //  TOKEN MANAGEMENT
+    // ═══════════════════════════════════════════════════════
+    let refreshInFlight = null;
+
+    async function getValidToken() {
+      let tokens = getTokens();
+      if (!tokens) return null;
+      if (Date.now() > tokens.expires_at - 5 * 60 * 1000) {
+        tokens = await refreshToken(tokens);
+      }
+      return tokens ? tokens.access_token : null;
+    }
+
+    async function refreshToken(tokens) {
+      if (refreshInFlight) return refreshInFlight;
+      refreshInFlight = (async () => {
+        try {
+          // re-read latest tokens in case another caller already refreshed
+          const current = getTokens() || tokens;
+          const clientId = getClientId();
+          const res = await fetch('https://accounts.spotify.com/api/token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({
+              grant_type:    'refresh_token',
+              refresh_token: current.refresh_token,
+              client_id:     clientId,
+            }),
+          });
+          const data = await res.json();
+          if (data.error) { showSetup(); return null; }
+          const updated = {
+            access_token:  data.access_token,
+            refresh_token: data.refresh_token || current.refresh_token,
+            expires_at:    Date.now() + data.expires_in * 1000,
+          };
+          set(KEY_TOKENS, updated);
+          return updated;
+        } catch(e) {
+          return null;
+        } finally {
+          refreshInFlight = null;
+        }
+      })();
+      return refreshInFlight;
+    }
+
+    // ═══════════════════════════════════════════════════════
+    //  SPOTIFY API
+    // ═══════════════════════════════════════════════════════
+    let rateLimitedUntil = 0;
+
+    async function spotifyFetch(path, opts = {}) {
+      if (Date.now() < rateLimitedUntil) return null;
+      const token = await getValidToken();
+      if (!token) { showSetup(); return null; }
+      const res = await fetch('https://api.spotify.com/v1' + path, {
+        ...opts,
+        headers: { Authorization: 'Bearer ' + token, ...(opts.headers || {}) },
+      });
+      if (res.status === 401) { showSetup(); return null; }
+      if (res.status === 429) {
+        const wait = parseInt(res.headers.get('Retry-After') || '30', 10);
+        rateLimitedUntil = Date.now() + wait * 1000;
+        console.warn(`[StreamKit] Spotify rate limited — pausing API calls for ${wait}s`);
+        return null;
+      }
+      return res;
+    }
+
+    // Now Playing
+    let npState = null;
+    async function fetchNowPlaying() {
+      const res = await spotifyFetch('/me/player?additional_types=track');
+      if (!res || res.status === 204) {
+        npState = null;
+        set(KEY_NP, null);
+        renderNP(null);
+        return;
+      }
+      const data = await res.json();
+      if (!data || !data.item) { renderNP(null); return; }
+
+      const t = data.item;
+      npState = {
+        title:     t.name,
+        artist:    t.artists.map(a => a.name).join(', '),
+        albumArt:  t.album.images[1]?.url || t.album.images[0]?.url || '',
+        isPlaying: data.is_playing,
+        progress:  data.progress_ms,
+        duration:  t.duration_ms,
+        trackId:   t.id,
+      };
+      set(KEY_NP, npState);
+      renderNP(npState);
+    }
+
+    function renderNP(np) {
+      const badge = document.getElementById('npBadge');
+      if (!np) {
+        document.getElementById('npTrack').innerHTML = '<span class="np-idle">Nothing playing</span>';
+        document.getElementById('npArtist').textContent = '';
+        document.getElementById('npArt').src = '';
+        document.getElementById('npFill').style.width = '0%';
+        document.getElementById('npPos').textContent = '0:00';
+        document.getElementById('npDur').textContent = '0:00';
+        document.getElementById('playPauseBtn').textContent = '▶';
+        badge.textContent = '— Not playing';
+        badge.className = 'np-badge paused';
+        return;
+      }
+      document.getElementById('npTrack').textContent  = np.title;
+      document.getElementById('npArtist').textContent = np.artist;
+      document.getElementById('npArt').src = np.albumArt;
+      const pct = np.duration > 0 ? (np.progress / np.duration * 100).toFixed(1) : 0;
+      document.getElementById('npFill').style.width = pct + '%';
+      document.getElementById('npPos').textContent = fmt(np.progress);
+      document.getElementById('npDur').textContent = fmt(np.duration);
+      document.getElementById('playPauseBtn').textContent = np.isPlaying ? '⏸' : '▶';
+      badge.textContent = np.isPlaying ? '♫ Playing' : '⏸ Paused';
+      badge.className   = 'np-badge' + (np.isPlaying ? '' : ' paused');
+    }
+
+    // Interpolate progress bar between API polls
+    let progressTick = null;
+    function startProgressTick() {
+      if (progressTick) clearInterval(progressTick);
+      progressTick = setInterval(() => {
+        if (!npState || !npState.isPlaying) return;
+        npState.progress = Math.min(npState.progress + 1000, npState.duration);
+        const pct = npState.duration > 0 ? (npState.progress / npState.duration * 100).toFixed(1) : 0;
+        document.getElementById('npFill').style.width = pct + '%';
+        document.getElementById('npPos').textContent = fmt(npState.progress);
+      }, 1000);
+    }
+
+    async function togglePlayPause() {
+      if (!npState) return;
+      const action = npState.isPlaying ? 'pause' : 'play';
+      await spotifyFetch('/me/player/' + action, { method: 'PUT' });
+      setTimeout(fetchNowPlaying, 400);
+    }
+
+    async function spotifyAction(action) {
+      await spotifyFetch('/me/player/' + action, { method: 'POST' });
+      setTimeout(fetchNowPlaying, 600);
+    }
+
+    async function addToSpotifyQueue(uri) {
+      const res = await spotifyFetch(`/me/player/queue?uri=${encodeURIComponent(uri)}`, { method: 'POST' });
+      return res && (res.status === 204 || res.ok);
+    }
+
+    // Search
+    async function searchSpotify(query) {
+      const q = query || document.getElementById('searchInput').value.trim();
+      if (!q) return [];
+      const res = await spotifyFetch(`/search?q=${encodeURIComponent(q)}&type=track&limit=5`);
+      if (!res || !res.ok) return [];
+      const data = await res.json();
+      return data.tracks?.items || [];
+    }
+
+    async function doSearch() {
+      const results = await searchSpotify();
+      renderSearchResults(results);
+    }
+
+    function renderSearchResults(tracks) {
+      const el = document.getElementById('searchResults');
+      if (!tracks.length) { el.innerHTML = '<div style="color:var(--muted);font-size:14px;padding:8px 0">No results found.</div>'; return; }
+      el.innerHTML = '';
+      tracks.forEach(t => {
+        const art = t.album.images[2]?.url || t.album.images[0]?.url || '';
+        const div = document.createElement('div');
+        div.className = 'result-item';
+        div.innerHTML = `
+          <img class="result-art" src="${esc(art)}" alt="">
+          <div class="result-info">
+            <div class="result-name">${esc(t.name)}</div>
+            <div class="result-artist">${esc(t.artists.map(a=>a.name).join(', '))}</div>
+          </div>
+          <button class="btn btn-spotify btn-sm result-add" data-uri="${esc(t.uri)}" data-name="${esc(t.name)}" data-artist="${esc(t.artists[0]?.name || '')}">+ Queue</button>
+        `;
+        el.appendChild(div);
+      });
+      if (!el.dataset.handlerAttached) {
+        el.addEventListener('click', e => {
+          const btn = e.target.closest('.result-add');
+          if (!btn) return;
+          queueTrack(btn.dataset.uri, btn.dataset.name, btn.dataset.artist, btn);
+        });
+        el.dataset.handlerAttached = '1';
+      }
+    }
+
+    async function queueTrack(uri, name, artist, btn) {
+      if (btn) { btn.textContent = '…'; btn.disabled = true; }
+      const ok = await addToSpotifyQueue(uri);
+      if (btn) {
+        btn.textContent = ok ? '✓ Added' : '✗ Error';
+        btn.style.background = ok ? 'var(--green)' : 'var(--red)';
+        setTimeout(() => { btn.textContent = '+ Queue'; btn.disabled = false; btn.style.background = ''; }, 2500);
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════
+    //  REQUEST QUEUE
+    // ═══════════════════════════════════════════════════════
+
+    // Sequential chain — auto-queue requests run one at a time,
+    // preventing bursts of simultaneous Spotify API calls when
+    // many viewers send !sr at once.
+    let autoQueueChain = Promise.resolve();
+    const MAX_REQUESTS = 100;
+    const USER_REQUEST_COOLDOWN_MS = 30000;
+    let lastRequestByUser = {};
+
+    function addRequest(user, query) {
+      // per-user rate limit (30s)
+      const now = Date.now();
+      if (lastRequestByUser[user] && now - lastRequestByUser[user] < USER_REQUEST_COOLDOWN_MS) return;
+
+      let reqs = getRequests();
+      // one pending request per user
+      const existing = reqs.find(r => r.user === user && r.status === 'pending');
+      if (existing) { existing.query = query; existing.trackInfo = null; }
+      else reqs.unshift({ id: uid(), user, query, trackInfo: null, status: 'pending', ts: now });
+
+      // cap log size — keep most recent
+      if (reqs.length > MAX_REQUESTS) reqs = reqs.slice(0, MAX_REQUESTS);
+
+      lastRequestByUser[user] = now;
+      set(KEY_REQUESTS, reqs);
+      renderQueue();
+
+      if (get(KEY_AUTOQ)) {
+        const id = existing ? existing.id : reqs[0].id;
+        autoQueueChain = autoQueueChain.then(() => autoResolveRequest(id));
+      }
+    }
+
+    async function autoResolveRequest(id) {
+      const reqs = getRequests();
+      const req = reqs.find(r => r.id === id);
+      if (!req || req.status !== 'pending') return;
+
+      const tracks = await searchSpotify(req.query);
+      if (!tracks.length) { req.status = 'rejected'; req.error = 'Not found'; set(KEY_REQUESTS, reqs); renderQueue(); return; }
+
+      const t = tracks[0];
+      req.trackInfo = { name: t.name, artist: t.artists[0]?.name, uri: t.uri };
+      const ok = await addToSpotifyQueue(t.uri);
+      req.status = ok ? 'added' : 'rejected';
+      if (!ok) req.error = 'Queue failed — is Spotify active?';
+      set(KEY_REQUESTS, reqs);
+      renderQueue();
+    }
+
+    async function approveRequest(id) {
+      const reqs = getRequests();
+      const req  = reqs.find(r => r.id === id);
+      if (!req) return;
+
+      if (!req.trackInfo) {
+        const tracks = await searchSpotify(req.query);
+        if (!tracks.length) { req.status = 'rejected'; req.error = 'Not found'; set(KEY_REQUESTS, reqs); renderQueue(); return; }
+        const t = tracks[0];
+        req.trackInfo = { name: t.name, artist: t.artists[0]?.name, uri: t.uri };
+      }
+      const ok = await addToSpotifyQueue(req.trackInfo.uri);
+      req.status = ok ? 'added' : 'rejected';
+      if (!ok) req.error = 'Queue failed — is Spotify active on a device?';
+      set(KEY_REQUESTS, reqs);
+      renderQueue();
+    }
+
+    function rejectRequest(id) {
+      const reqs = getRequests();
+      const req  = reqs.find(r => r.id === id);
+      if (req) { req.status = 'rejected'; set(KEY_REQUESTS, reqs); renderQueue(); }
+    }
+
+    function clearQueue() {
+      set(KEY_REQUESTS, []);
+      renderQueue();
+    }
+
+    function renderQueue() {
+      const reqs = getRequests();
+      const pending = reqs.filter(r => r.status === 'pending').length;
+      document.getElementById('queueBadge').textContent = reqs.length ? `(${reqs.length})` : '';
+
+      const list = document.getElementById('reqList');
+      if (!reqs.length) { list.innerHTML = '<div class="queue-empty">No requests yet — viewers type !sr in chat</div>'; return; }
+
+      list.innerHTML = '';
+      reqs.forEach(req => {
+        const div = document.createElement('div');
+        div.className = 'req-item ' + (req.status !== 'pending' ? req.status : '');
+        const initial = esc(req.user[0]?.toUpperCase() || '?');
+        div.innerHTML = `
+          <div class="req-avatar">${initial}</div>
+          <div class="req-body">
+            <div class="req-user">${esc(req.user)}</div>
+            <div class="req-song">${esc(req.query)}</div>
+            ${req.trackInfo ? `<div class="req-track-info">♫ ${esc(req.trackInfo.name)} — ${esc(req.trackInfo.artist)}</div>` : ''}
+            ${req.error ? `<div style="font-size:11px;color:var(--red)">${esc(req.error)}</div>` : ''}
+          </div>
+          <div class="req-actions">
+            ${req.status === 'pending'
+              ? `<button class="btn btn-spotify btn-sm req-approve" data-id="${esc(req.id)}">✓ Add</button>
+                 <button class="btn btn-ghost btn-sm req-reject"   data-id="${esc(req.id)}">✗</button>`
+              : `<span class="req-badge ${req.status}">${req.status === 'added' ? '✓ Added' : '✗ Skip'}</span>`}
+          </div>
+        `;
+        list.appendChild(div);
+      });
+      if (!list.dataset.handlerAttached) {
+        list.addEventListener('click', e => {
+          const approveBtn = e.target.closest('.req-approve');
+          if (approveBtn) { approveRequest(approveBtn.dataset.id); return; }
+          const rejectBtn = e.target.closest('.req-reject');
+          if (rejectBtn) { rejectRequest(rejectBtn.dataset.id); return; }
+        });
+        list.dataset.handlerAttached = '1';
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════
+    //  TWITCH IRC (anonymous)
+    // ═══════════════════════════════════════════════════════
+    let twitchWs = null;
+    let twitchChannel = '';
+    let twitchReconnectTimer = null;
+    let reconnectDelay = 2000;
+    const TWITCH_CHANNEL_RE = /^[a-zA-Z0-9_]{1,25}$/;
+
+    function connectTwitch() {
+      if (twitchReconnectTimer) clearTimeout(twitchReconnectTimer);
+      twitchReconnectTimer = null;
+
+      const channel = document.getElementById('channelInput').value.trim().toLowerCase().replace(/^#/, '');
+      if (!channel) { alert('Enter your Twitch channel name.'); return; }
+      if (!TWITCH_CHANNEL_RE.test(channel)) {
+        console.warn('[StreamKit] Invalid Twitch channel name; aborting connect:', channel);
+        alert('Invalid Twitch channel name. Use letters, numbers, and underscores only (1–25 chars).');
+        return;
+      }
+      twitchChannel = channel;
+      localStorage.setItem(KEY_CHANNEL, channel);
+      openTwitchSocket();
+    }
+
+    function openTwitchSocket() {
+      if (!TWITCH_CHANNEL_RE.test(twitchChannel)) return;
+      // tear down any existing socket before creating a new one
+      if (twitchWs) {
+        twitchWs.onclose = null;
+        twitchWs.onerror = null;
+        twitchWs.onmessage = null;
+        twitchWs.onopen = null;
+        try { twitchWs.close(); } catch (e) {}
+        twitchWs = null;
+      }
+      setTwitchStatus('connecting');
+
+      twitchWs = new WebSocket('wss://irc-ws.chat.twitch.tv');
+      const ws = twitchWs;
+
+      ws.onopen = () => {
+        if (ws !== twitchWs) return;
+        ws.send('CAP REQ :twitch.tv/tags');
+        ws.send('PASS SCHMOOPIIE');
+        ws.send('NICK justinfan' + Math.floor(Math.random() * 999999));
+        ws.send('JOIN #' + twitchChannel);
+        reconnectDelay = 2000;
+      };
+
+      ws.onmessage = e => {
+        if (ws !== twitchWs) return;
+        const raw = e.data.trim();
+        // PING keepalive
+        if (raw.startsWith('PING')) { ws.send('PONG :tmi.twitch.tv'); return; }
+        // Detect successful JOIN
+        if (raw.includes('366') || raw.includes('JOIN #' + twitchChannel)) {
+          setTwitchStatus('live');
+        }
+        // Parse PRIVMSG
+        const msgMatch = raw.match(/;display-name=([^;]+);.*PRIVMSG #\S+ :(.+)/);
+        if (msgMatch) {
+          const user    = msgMatch[1] || 'viewer';
+          const message = msgMatch[2].trim();
+          if (message.toLowerCase().startsWith('!sr ')) {
+            addRequest(user, message.slice(4).trim());
+          }
+          return;
+        }
+        // Fallback: no tags
+        const plain = raw.match(/^:(\w+)!\w+@\S+ PRIVMSG #\S+ :(.+)/);
+        if (plain) {
+          const user = plain[1];
+          const msg  = plain[2].trim();
+          if (msg.toLowerCase().startsWith('!sr ')) addRequest(user, msg.slice(4).trim());
+        }
+      };
+
+      ws.onerror = () => { if (ws === twitchWs) setTwitchStatus('disconnected'); };
+      ws.onclose = () => {
+        if (ws !== twitchWs) return;
+        setTwitchStatus('disconnected');
+        if (twitchChannel) {
+          if (twitchReconnectTimer) clearTimeout(twitchReconnectTimer);
+          twitchReconnectTimer = setTimeout(() => { twitchReconnectTimer = null; openTwitchSocket(); }, reconnectDelay);
+          reconnectDelay = Math.min(reconnectDelay * 2, 30000);
+        }
+      };
+    }
+
+    function disconnectTwitch() {
+      twitchChannel = '';
+      localStorage.removeItem(KEY_CHANNEL);
+      if (twitchReconnectTimer) { clearTimeout(twitchReconnectTimer); twitchReconnectTimer = null; }
+      if (twitchWs) {
+        twitchWs.onclose = null;
+        twitchWs.onerror = null;
+        twitchWs.onmessage = null;
+        twitchWs.onopen = null;
+        try { twitchWs.close(); } catch (e) {}
+        twitchWs = null;
+      }
+      setTwitchStatus('disconnected');
+      document.getElementById('channelInput').value = '';
+    }
+
+    function setTwitchStatus(state) {
+      const dot   = document.getElementById('twitchDot');
+      const label = document.getElementById('twitchStatusLabel');
+      const cr    = document.getElementById('twitchConnectRow');
+      const cc    = document.getElementById('twitchConnectedRow');
+      const chl   = document.getElementById('connectedChannelLabel');
+
+      dot.className = 'status-dot' + (state === 'live' ? ' live' : state === 'connecting' ? ' connecting' : '');
+      label.textContent = state === 'live' ? 'Live' : state === 'connecting' ? 'Connecting…' : 'Disconnected';
+
+      if (state === 'live') {
+        cr.style.display = 'none';
+        cc.style.display = 'block';
+        chl.textContent  = '#' + twitchChannel;
+      } else {
+        cr.style.display = 'flex';
+        cc.style.display = 'none';
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════
+    //  SETTINGS
+    // ═══════════════════════════════════════════════════════
+    function saveSettings() {
+      set(KEY_AUTOQ, document.getElementById('autoAddToggle').checked);
+    }
+
+    // ═══════════════════════════════════════════════════════
+    //  VIEW MANAGEMENT
+    // ═══════════════════════════════════════════════════════
+    function showSetup() {
+      document.getElementById('setupView').style.display = 'block';
+      document.getElementById('mainView').style.display  = 'none';
+      document.getElementById('redirectUriDisplay').value = REDIRECT_URI;
+      const saved = localStorage.getItem(KEY_CLIENT);
+      if (saved) document.getElementById('clientIdInput').value = saved;
+    }
+
+    function showMain() {
+      document.getElementById('setupView').style.display = 'none';
+      document.getElementById('mainView').style.display  = 'block';
+
+      // Restore settings
+      document.getElementById('autoAddToggle').checked = !!get(KEY_AUTOQ);
+
+      // Restore Twitch channel
+      const savedChannel = localStorage.getItem(KEY_CHANNEL);
+      if (savedChannel && TWITCH_CHANNEL_RE.test(savedChannel)) {
+        document.getElementById('channelInput').value = savedChannel;
+        twitchChannel = savedChannel;
+        openTwitchSocket();
+      } else if (savedChannel) {
+        // stale/invalid persisted value — drop it
+        localStorage.removeItem(KEY_CHANNEL);
+      }
+
+      renderQueue();
+      fetchNowPlaying();
+      startProgressTick();
+      // Poll now playing every 8 seconds (clear before recreate so re-auth doesn't stack pollers)
+      if (window.__nowPlayingInterval) clearInterval(window.__nowPlayingInterval);
+      window.__nowPlayingInterval = setInterval(fetchNowPlaying, 8000);
+    }
+
+    // ═══════════════════════════════════════════════════════
+    //  UTILS
+    // ═══════════════════════════════════════════════════════
+    function fmt(ms) {
+      const s = Math.max(0, Math.floor(ms / 1000));
+      return `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
+    }
+
+    function copyRedirectUri() {
+      navigator.clipboard.writeText(REDIRECT_URI).catch(() => {});
+      const btn = event.target;
+      btn.textContent = 'Copied!';
+      setTimeout(() => { btn.textContent = 'Copy'; }, 2000);
+    }
+
+    // Global search binding
+    document.addEventListener('DOMContentLoaded', () => {
+      const si = document.getElementById('searchInput');
+      if (si) si.addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
+    });
+
+    // ═══════════════════════════════════════════════════════
+    //  INIT
+    // ═══════════════════════════════════════════════════════
+    if (getTokens()) { showMain(); }
+    else             { showSetup(); }
+  </script>
+
+  <!-- ── Overlay Style Panel ── -->
+  <style>
+    .preview-hint { font-size: 11px; color: var(--muted); margin-top: 10px; }
+    .spotify-preview-box {
+      display: inline-flex; align-items: center; gap: 12px;
+      padding: 10px 14px 10px 10px;
+      background: rgba(0,0,0,0.72); border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.08);
+      max-width: 300px;
+    }
+    .pv-art { width: 46px; height: 46px; border-radius: 6px; background: #2a2a2a; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+    .pv-info { flex: 1; min-width: 0; }
+    .pv-eq { display: flex; align-items: flex-end; gap: 2px; height: 12px; margin-bottom: 3px; }
+    .pv-bar { width: 3px; border-radius: 2px; }
+    .pv-bar:nth-child(1) { animation: eq 0.9s ease infinite 0.0s; }
+    .pv-bar:nth-child(2) { animation: eq 0.9s ease infinite 0.2s; }
+    .pv-bar:nth-child(3) { animation: eq 0.9s ease infinite 0.4s; }
+    .pv-bar:nth-child(4) { animation: eq 0.9s ease infinite 0.1s; }
+    @keyframes eq { 0%,100% { height: 3px; } 50% { height: 12px; } }
+    .pv-title  { font-size: 13px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .pv-artist { font-size: 11px; color: rgba(255,255,255,0.6); }
+    .pv-progress { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
+    .pv-track { flex: 1; height: 3px; background: rgba(255,255,255,0.2); border-radius: 2px; overflow: hidden; }
+    .pv-fill  { height: 100%; border-radius: 2px; width: 40%; }
+    .pv-time  { font-size: 9px; color: rgba(255,255,255,0.4); }
+  </style>
+
+  <button class="style-toggle-btn" id="styleToggle" onclick="toggleStylePanel()">
+    🎨 Now Playing Overlay Style <span class="st-arrow">▼</span>
+  </button>
+  <div class="style-panel" id="stylePanel">
+    <div class="style-section">
+      <div class="style-section-label">Font</div>
+      <div class="font-grid" id="fontGrid"></div>
+    </div>
+    <div class="style-section">
+      <div class="style-section-label">Accent Color</div>
+      <div class="color-row">
+        <div class="color-swatch"><label>EQ Bars &amp; Progress</label>
+          <input type="color" id="colorAccent" value="#1db954" oninput="saveOvStyle()"></div>
+      </div>
+    </div>
+    <div class="style-section">
+      <div class="style-section-label">Preview</div>
+      <div class="spotify-preview-box" id="previewBox">
+        <div class="pv-art">🎵</div>
+        <div class="pv-info">
+          <div class="pv-eq">
+            <div class="pv-bar" id="pvBar1"></div>
+            <div class="pv-bar" id="pvBar2"></div>
+            <div class="pv-bar" id="pvBar3"></div>
+            <div class="pv-bar" id="pvBar4"></div>
+          </div>
+          <div class="pv-title">Song Title</div>
+          <div class="pv-artist">Artist Name</div>
+          <div class="pv-progress">
+            <div class="pv-track"><div class="pv-fill" id="pvFill"></div></div>
+            <span class="pv-time">2:34</span>
+          </div>
+        </div>
+      </div>
+      <div class="preview-hint">Changes appear in the OBS overlay within 5 seconds.</div>
+      <div class="obs-link-row">
+        <button class="btn-copy-obs" id="copyOBSBtn" onclick="copyOBSLink()">📋 Copy OBS Browser Source URL</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const SP_OV_KEY  = 'streamkit_overlay_spotify';
+    const SP_OV_DEFS = { font: 'system', colorAccent: '#1db954' };
+
+    let spOvFont = 'system';
+    function getSpOvStyle() {
+      try { return { ...SP_OV_DEFS, ...JSON.parse(localStorage.getItem(SP_OV_KEY)) }; }
+      catch(e) { return { ...SP_OV_DEFS }; }
+    }
+    function saveOvStyle() {
+      const s = { font: spOvFont, colorAccent: document.getElementById('colorAccent').value };
+      localStorage.setItem(SP_OV_KEY, JSON.stringify(s));
+      updateSpPreview(s);
+    }
+    function updateSpPreview(s) {
+      const f = StreamKit.FONTS.find(f => f.id === s.font) || StreamKit.FONTS[0];
+      document.getElementById('previewBox').style.fontFamily = f.css;
+      ['pvBar1','pvBar2','pvBar3','pvBar4'].forEach(id => {
+        document.getElementById(id).style.background = s.colorAccent;
+      });
+      document.getElementById('pvFill').style.background = s.colorAccent;
+    }
+    function selectSpOvFont(id) {
+      spOvFont = id;
+      document.querySelectorAll('.font-card').forEach(c => c.classList.toggle('active', c.dataset.fid === id));
+      saveOvStyle();
+    }
+    function buildSpFontGrid() {
+      const grid = document.getElementById('fontGrid');
+      grid.innerHTML = '';
+      StreamKit.FONTS.forEach(f => {
+        const card = document.createElement('div');
+        card.className = 'font-card' + (f.id === spOvFont ? ' active' : '');
+        card.dataset.fid = f.id;
+        card.onclick = () => selectSpOvFont(f.id);
+        const licenseClass = StreamKit.licenseClass(f.license);
+        card.innerHTML = `<span class="font-sample" style="font-family:${f.css}">Aa</span><span class="font-name">${f.label}</span><span class="font-license ${licenseClass}">${f.license}</span>`;
+        grid.appendChild(card);
+      });
+    }
+    function loadSpOvStyle() {
+      const s = getSpOvStyle();
+      spOvFont = s.font || 'system';
+      document.getElementById('colorAccent').value = s.colorAccent || '#1db954';
+      buildSpFontGrid();
+      updateSpPreview(s);
+    }
+    function toggleStylePanel() {
+      const open = document.getElementById('stylePanel').classList.toggle('open');
+      document.getElementById('styleToggle').classList.toggle('open', open);
+    }
+    loadSpOvStyle();
+  </script>
+</body>
+</html>

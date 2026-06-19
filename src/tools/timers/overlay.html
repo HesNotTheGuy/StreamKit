@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Timer Overlay — StreamKit</title>
+  <link rel="stylesheet" href="../../../assets/styles/overlay.css">
+  <script src="../../../assets/js/util.js"></script>
+  <style>
+    body { padding: 10px; }
+    .timer-stack { display: flex; flex-direction: column; gap: 8px; }
+    .timer-row   { display: flex; align-items: center; gap: 10px; }
+    .timer-label {
+      font-size: 15px; font-weight: 600;
+      color: rgba(255,255,255,0.85);
+      text-shadow: 1px 1px 3px rgba(0,0,0,0.9);
+      min-width: 80px;
+    }
+    .timer-value {
+      font-size: 32px; font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      text-shadow: 2px 2px 0 #000, -1px -1px 0 #000,
+                   2px -2px 0 #000, -2px 2px 0 #000,
+                   0 0 12px rgba(0,0,0,0.95);
+      line-height: 1;
+    }
+    .timer-value.done { animation: flash-red 0.8s infinite; }
+  </style>
+</head>
+<body>
+  <div class="timer-stack" id="stack"></div>
+
+  <script>
+    const KEY       = 'streamkit_timers';
+    const STYLE_KEY = 'streamkit_overlay_timers';
+
+    const DEFAULTS  = { font: 'system', colorValue: '#ffffff', colorDone: '#e74c3c' };
+
+    function getStyle() {
+      try { return { ...DEFAULTS, ...JSON.parse(localStorage.getItem(STYLE_KEY)) }; }
+      catch(e) { return { ...DEFAULTS }; }
+    }
+
+    function getCurrent(t) {
+      const liveElapsed = t.running && t.startedAt ? (Date.now() - t.startedAt) / 1000 : 0;
+      const total = (t.elapsed || 0) + liveElapsed;
+      if (t.type === 'countup') return total;
+      return Math.max(0, (t.duration || 0) - total);
+    }
+
+    function fmtTime(secs) {
+      secs = Math.max(0, Math.floor(secs));
+      const h = Math.floor(secs / 3600);
+      const m = Math.floor((secs % 3600) / 60);
+      const s = secs % 60;
+      if (h > 0) return `${h}:${pad(m)}:${pad(s)}`;
+      return `${pad(m)}:${pad(s)}`;
+    }
+    function pad(n) { return String(n).padStart(2,'0'); }
+
+    function update() {
+      const s       = getStyle();
+      const fontCss = StreamKit.FONT_CSS[s.font] || StreamKit.FONT_CSS.system;
+      document.body.style.fontFamily = fontCss;
+
+      const raw   = localStorage.getItem(KEY);
+      const stack = document.getElementById('stack');
+      if (!raw) { stack.innerHTML = ''; return; }
+      let timers;
+      try { timers = JSON.parse(raw); } catch(e) { return; }
+
+      const active = timers.filter(t => t.running);
+      stack.innerHTML = '';
+      if (!active.length) return;
+
+      active.forEach(t => {
+        const current = getCurrent(t);
+        const done    = t.type !== 'countup' && current <= 0;
+        const row = document.createElement('div');
+        row.className = 'timer-row';
+        row.innerHTML = `
+          <span class="timer-label">${esc(t.label)}</span>
+          <span class="timer-value${done ? ' done' : ''}" style="color:${done ? s.colorDone : s.colorValue}">${done ? '⚠ 00:00' : fmtTime(current)}</span>
+        `;
+        stack.appendChild(row);
+      });
+    }
+
+    update();
+    setInterval(update, 500);
+  </script>
+</body>
+</html>

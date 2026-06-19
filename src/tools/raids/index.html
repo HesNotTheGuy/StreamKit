@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Raid Tracker — StreamKit</title>
+  <link rel="stylesheet" href="../../../assets/styles/dashboard.css">
+  <script src="../../../assets/js/util.js"></script>
+  <style>
+    body { padding: 20px; }
+
+    .tool-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+    .header-right { display: flex; align-items: center; gap: 10px; }
+
+    /* Connection status */
+    .irc-status {
+      display: flex; align-items: center; gap: 6px;
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 12px; font-weight: 700;
+      border: 1px solid var(--border);
+      background: var(--bg3);
+      color: var(--muted);
+    }
+    .irc-status.connected { background: rgba(46,204,113,0.1); border-color: rgba(46,204,113,0.3); color: var(--green); }
+    .irc-status.error     { background: rgba(231,76,60,0.1);  border-color: rgba(231,76,60,0.3);  color: var(--red); }
+    .irc-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: currentColor;
+    }
+    .irc-status.connected .irc-dot { animation: pulse-irc 2s ease infinite; }
+    @keyframes pulse-irc {
+      0%,100% { opacity: 1; }
+      50%      { opacity: 0.4; }
+    }
+
+    /* Twitch-not-connected notice */
+    .setup-notice {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      padding: 40px 20px;
+      gap: 12px;
+      color: var(--muted);
+    }
+    .setup-notice.show { display: flex; }
+    .setup-notice h3 { color: var(--text); }
+    .setup-notice p { font-size: 14px; max-width: 400px; line-height: 1.5; }
+
+    /* Channel config */
+    .channel-bar {
+      display: flex; align-items: center; gap: 8px;
+      margin-bottom: 16px;
+      padding: 12px 14px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+    .channel-bar label { font-size: 13px; color: var(--muted); white-space: nowrap; }
+    .channel-bar input { flex: 1; }
+    .channel-bar .btn { white-space: nowrap; }
+
+    /* Stats row */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .stat-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 16px;
+      text-align: center;
+    }
+    .stat-value { font-size: 28px; font-weight: 800; color: var(--text); line-height: 1; }
+    .stat-label { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+    /* Manual add */
+    .add-section {
+      display: flex; gap: 8px;
+      margin-bottom: 16px;
+    }
+    .add-section input { flex: 1; }
+    .add-section input.viewers { width: 100px; flex: none; }
+
+    /* Raids list */
+    .raids-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+    .raids-header-actions { display: flex; gap: 8px; }
+
+    .raids-list {
+      display: flex; flex-direction: column; gap: 8px;
+      max-height: 55vh; overflow-y: auto;
+    }
+
+    .raid-item {
+      display: flex; align-items: center; gap: 14px;
+      padding: 14px 16px;
+      background: var(--bg3);
+      border-radius: 10px;
+      border: 1px solid transparent;
+      transition: border-color 0.15s;
+      animation: slide-in 0.25s ease;
+    }
+    @keyframes slide-in {
+      from { opacity: 0; transform: translateY(-6px); }
+      to   { opacity: 1; transform: none; }
+    }
+    .raid-item:hover { border-color: var(--border); }
+    .raid-item.new-flash {
+      border-color: rgba(145,71,255,0.5);
+      background: rgba(145,71,255,0.06);
+    }
+
+    .raid-avatar {
+      width: 42px; height: 42px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), #9147ff);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; font-weight: 800;
+      color: #fff;
+      flex-shrink: 0;
+      text-transform: uppercase;
+    }
+
+    .raid-info { flex: 1; min-width: 0; }
+    .raid-name {
+      font-size: 16px; font-weight: 700; color: var(--text);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .raid-meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+    .raid-viewers {
+      text-align: right;
+      flex-shrink: 0;
+    }
+    .raid-count {
+      font-size: 24px; font-weight: 800; color: #9147ff;
+      line-height: 1;
+    }
+    .raid-count-label { font-size: 11px; color: var(--muted); }
+
+    .raid-del {
+      background: none; border: none; color: var(--muted);
+      cursor: pointer; font-size: 18px; opacity: 0;
+      transition: opacity 0.15s; padding: 0 4px; line-height: 1;
+    }
+    .raid-item:hover .raid-del { opacity: 1; }
+    .raid-del:hover { color: var(--red); }
+
+    .empty-state { text-align: center; padding: 50px 20px; color: var(--muted); font-size: 15px; }
+  </style>
+</head>
+<body>
+
+  <!-- Twitch not connected notice -->
+  <div class="setup-notice" id="setupNotice">
+    <div style="font-size:40px">🟣</div>
+    <h3>Connect Twitch to track raids</h3>
+    <p>The Raid Tracker listens to your Twitch chat for incoming raid events. Connect Twitch from the sidebar first, then come back here.</p>
+    <p style="font-size:13px">No Twitch connection? You can still <strong>manually log raids</strong> below.</p>
+    <button class="btn btn-ghost" onclick="document.getElementById('setupNotice').classList.remove('show'); document.getElementById('mainContent').style.display=''">
+      Manual mode →
+    </button>
+  </div>
+
+  <!-- Main content -->
+  <div id="mainContent">
+    <div class="tool-header">
+      <h1>Raid Tracker</h1>
+      <div class="header-right">
+        <div class="irc-status" id="ircStatus">
+          <div class="irc-dot"></div>
+          <span id="ircStatusText">Disconnected</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Channel bar -->
+    <div class="channel-bar" id="channelBar">
+      <label>Channel:</label>
+      <input type="text" id="channelInput" placeholder="your_twitch_username" autocomplete="off" spellcheck="false">
+      <button class="btn btn-primary btn-sm" onclick="connectIRC()">Connect</button>
+      <button class="btn btn-ghost btn-sm" id="disconnectBtn" onclick="disconnectIRC()" style="display:none">Disconnect</button>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-value" id="statTotal">0</div>
+        <div class="stat-label">Total Raids</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="statViewers" style="color:#9147ff">0</div>
+        <div class="stat-label">Total Raiders</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="statBiggest">—</div>
+        <div class="stat-label">Biggest Raid</div>
+      </div>
+    </div>
+
+    <!-- Manual add -->
+    <div class="add-section">
+      <input type="text" id="addName" placeholder="Raider channel name…" autocomplete="off" spellcheck="false">
+      <input type="number" id="addViewers" class="viewers" placeholder="Viewers" min="0" max="99999">
+      <button class="btn btn-primary" onclick="addManual()">+ Log Raid</button>
+    </div>
+
+    <!-- List -->
+    <div class="raids-header">
+      <h3>Session Raids</h3>
+      <div class="raids-header-actions">
+        <button class="btn btn-ghost btn-sm" onclick="exportRaids()">📋 Export</button>
+        <button class="btn btn-ghost btn-sm" style="color:var(--muted)" onclick="clearSession()">Clear</button>
+      </div>
+    </div>
+
+    <div class="raids-list" id="raidsList">
+      <div class="empty-state" id="emptyState">No raids yet this session.<br>Start your stream and this will auto-fill!</div>
+    </div>
+  </div>
+
+  <script>
+    const KEY = 'streamkit_raids';
+
+    let raids   = [];
+    let ws      = null;
+    let wsChannel = '';
+    let pingTimer = null;
+    let raidsReconnectTimer = null;
+
+    // ── Storage ──
+    function load() {
+      try {
+        const s = localStorage.getItem(KEY);
+        if (s) raids = JSON.parse(s) || [];
+      } catch(e) { raids = []; }
+    }
+    function save() { localStorage.setItem(KEY, JSON.stringify(raids)); }
+
+    // ── Auto-fill channel from Twitch auth ──
+    function initChannel() {
+      const stored = localStorage.getItem('streamkit_twitch_channel');
+      const user   = (() => { try { return JSON.parse(localStorage.getItem('streamkit_twitch_user')); } catch(e) { return null; } })();
+      const channel = (user && user.login) || stored || '';
+      if (channel) {
+        document.getElementById('channelInput').value = channel;
+        // Auto-connect if we have a channel
+        connectIRC();
+      }
+    }
+
+    // ── IRC ──
+    function connectIRC() {
+      if (raidsReconnectTimer) { clearTimeout(raidsReconnectTimer); raidsReconnectTimer = null; }
+      const ch = document.getElementById('channelInput').value.trim().toLowerCase();
+      if (!ch) { alert('Enter a Twitch channel name first.'); return; }
+      if (ws && ws.readyState <= 1 && wsChannel === ch) return; // already connected
+      disconnectIRC(true);
+      wsChannel = ch;
+      setStatus('connecting');
+
+      ws = new WebSocket('wss://irc-ws.chat.twitch.tv:443');
+
+      ws.onopen = () => {
+        ws.send('CAP REQ :twitch.tv/tags twitch.tv/commands');
+        ws.send('NICK justinfan' + Math.floor(Math.random() * 900000 + 100000));
+        ws.send('JOIN #' + ch);
+        setStatus('connected');
+        document.getElementById('disconnectBtn').style.display = '';
+        // Keep-alive ping every 4 min
+        pingTimer = setInterval(() => { if (ws && ws.readyState === 1) ws.send('PING :tmi.twitch.tv'); }, 240000);
+      };
+
+      ws.onmessage = e => {
+        const raw = e.data;
+        // Handle PING
+        if (raw.startsWith('PING')) { ws.send('PONG :tmi.twitch.tv'); return; }
+        parseMessage(raw);
+      };
+
+      ws.onclose = () => {
+        setStatus('disconnected');
+        document.getElementById('disconnectBtn').style.display = 'none';
+        clearInterval(pingTimer);
+        // Auto-reconnect after 5s
+        if (wsChannel) {
+          if (raidsReconnectTimer) clearTimeout(raidsReconnectTimer);
+          raidsReconnectTimer = setTimeout(() => { if (!ws || ws.readyState > 1) connectIRC(); }, 5000);
+        }
+      };
+
+      ws.onerror = () => setStatus('error');
+    }
+
+    function disconnectIRC(silent = false) {
+      wsChannel = '';
+      clearInterval(pingTimer);
+      if (raidsReconnectTimer) { clearTimeout(raidsReconnectTimer); raidsReconnectTimer = null; }
+      if (ws) { ws.onclose = null; ws.close(); ws = null; }
+      if (!silent) setStatus('disconnected');
+      document.getElementById('disconnectBtn').style.display = 'none';
+    }
+
+    function setStatus(state) {
+      const el   = document.getElementById('ircStatus');
+      const text = document.getElementById('ircStatusText');
+      el.className = 'irc-status';
+      const labels = { connected:'connected', connecting:'connecting', disconnected:'disconnected', error:'error' };
+      const display = { connected:'Listening', connecting:'Connecting…', disconnected:'Disconnected', error:'Error' };
+      if (state === 'connected') el.classList.add('connected');
+      if (state === 'error')     el.classList.add('error');
+      text.textContent = display[state] || state;
+    }
+
+    // ── IRC message parser ──
+    // Raid USERNOTICE has: @msg-id=raid;msg-param-displayName=X;msg-param-viewerCount=500
+    function parseMessage(raw) {
+      if (!raw.includes('USERNOTICE')) return;
+      if (!raw.includes('msg-id=raid')) return;
+
+      // Parse tags
+      const tagStr = raw.startsWith('@') ? raw.slice(1, raw.indexOf(' ')) : '';
+      const tags   = {};
+      tagStr.split(';').forEach(t => {
+        const [k, v] = t.split('=');
+        tags[k] = v || '';
+      });
+
+      if (tags['msg-id'] !== 'raid') return;
+
+      const raiderName    = tags['msg-param-displayName'] || tags['msg-param-login'] || 'Unknown';
+      const raiderLogin   = tags['msg-param-login'] || raiderName.toLowerCase();
+      const viewerCount   = parseInt(tags['msg-param-viewerCount'], 10) || 0;
+
+      addRaid(raiderName, raiderLogin, viewerCount, true);
+    }
+
+    // ── Add raid ──
+    function addRaid(displayName, login, viewers, fromIRC = false) {
+      const raid = {
+        id: uid(),
+        displayName,
+        login: login || displayName.toLowerCase(),
+        viewers,
+        timestamp: Date.now(),
+        fromIRC,
+      };
+      raids.unshift(raid);
+      save();
+      renderList();
+      renderStats();
+      if (fromIRC) flashNewRaid(raid.id);
+    }
+
+    function addManual() {
+      const name    = document.getElementById('addName').value.trim();
+      const viewers = parseInt(document.getElementById('addViewers').value, 10) || 0;
+      if (!name) { alert('Enter a channel name.'); return; }
+      addRaid(name, name.toLowerCase(), viewers, false);
+      document.getElementById('addName').value = '';
+      document.getElementById('addViewers').value = '';
+    }
+
+    function deleteRaid(id) {
+      raids = raids.filter(r => r.id !== id);
+      save();
+      renderList();
+      renderStats();
+    }
+
+    function clearSession() {
+      if (!confirm('Clear all raid logs for this session?')) return;
+      raids = [];
+      save();
+      renderList();
+      renderStats();
+    }
+
+    // ── Render ──
+    function renderStats() {
+      document.getElementById('statTotal').textContent = raids.length;
+      const total = raids.reduce((s, r) => s + r.viewers, 0);
+      document.getElementById('statViewers').textContent = total.toLocaleString();
+      const biggest = raids.reduce((m, r) => r.viewers > m ? r.viewers : m, 0);
+      document.getElementById('statBiggest').textContent = raids.length ? biggest.toLocaleString() : '—';
+    }
+
+    function renderList() {
+      const list  = document.getElementById('raidsList');
+      const empty = document.getElementById('emptyState');
+      empty.style.display = raids.length ? 'none' : 'block';
+      list.querySelectorAll('.raid-item').forEach(el => el.remove());
+
+      raids.forEach(r => {
+        const div = document.createElement('div');
+        div.className = 'raid-item';
+        div.id = 'raid-' + r.id;
+
+        const initial = r.displayName.charAt(0).toUpperCase();
+        const timeStr = new Date(r.timestamp).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
+        const viewersStr = r.viewers.toLocaleString();
+
+        div.innerHTML = `
+          <div class="raid-avatar">${esc(initial)}</div>
+          <div class="raid-info">
+            <div class="raid-name">${esc(r.displayName)}</div>
+            <div class="raid-meta">${timeStr}${r.fromIRC ? ' · auto-detected' : ' · manually added'}</div>
+          </div>
+          <div class="raid-viewers">
+            <div class="raid-count">${viewersStr}</div>
+            <div class="raid-count-label">viewer${r.viewers !== 1 ? 's' : ''}</div>
+          </div>
+          <button class="raid-del" onclick="deleteRaid('${r.id}')" title="Remove">×</button>
+        `;
+        list.appendChild(div);
+      });
+    }
+
+    function flashNewRaid(id) {
+      const el = document.getElementById('raid-' + id);
+      if (!el) return;
+      el.classList.add('new-flash');
+      setTimeout(() => el.classList.remove('new-flash'), 3000);
+    }
+
+    // ── Export ──
+    function exportRaids() {
+      if (!raids.length) { alert('No raids to export.'); return; }
+      const lines = [
+        'StreamKit Raid Log',
+        '─'.repeat(40),
+        ...raids.slice().reverse().map(r => {
+          const t = new Date(r.timestamp).toLocaleString();
+          return `[${t}] ${r.displayName} — ${r.viewers.toLocaleString()} viewer${r.viewers !== 1 ? 's' : ''}`;
+        }),
+        '─'.repeat(40),
+        `Total: ${raids.length} raid${raids.length !== 1 ? 's' : ''}, ${raids.reduce((s, r) => s + r.viewers, 0).toLocaleString()} total raiders`,
+      ];
+      navigator.clipboard.writeText(lines.join('\n')).then(() => {
+        const btn = document.querySelector('[onclick="exportRaids()"]');
+        const orig = btn.textContent;
+        btn.textContent = '✅ Copied!';
+        setTimeout(() => { btn.textContent = orig; }, 2000);
+      }).catch(() => {
+        prompt('Copy this text:', lines.join('\n'));
+      });
+    }
+
+    // ── Init ──
+    const twitchUser = (() => { try { return JSON.parse(localStorage.getItem('streamkit_twitch_user')); } catch(e) { return null; } })();
+    if (!twitchUser) {
+      document.getElementById('setupNotice').classList.add('show');
+      document.getElementById('mainContent').style.display = 'none';
+    }
+
+    load();
+    renderList();
+    renderStats();
+    initChannel();
+
+    // Enter key in add form
+    document.getElementById('addViewers').addEventListener('keydown', e => {
+      if (e.key === 'Enter') addManual();
+    });
+    document.getElementById('addName').addEventListener('keydown', e => {
+      if (e.key === 'Enter') document.getElementById('addViewers').focus();
+    });
+  </script>
+</body>
+</html>

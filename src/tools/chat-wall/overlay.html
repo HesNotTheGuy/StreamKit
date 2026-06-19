@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Chat Wall Overlay</title>
+  <link rel="stylesheet" href="../../../assets/styles/overlay.css">
+  <script src="../../../assets/js/util.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: transparent; padding: 16px; font-family: 'Segoe UI', system-ui, sans-serif; }
+
+    /* ── Cycle mode card ── */
+    .cw-card {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      padding: 14px 16px;
+      background: rgba(10,10,18,0.82);
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 12px;
+      min-width: 300px;
+      max-width: 480px;
+      backdrop-filter: blur(6px);
+      opacity: 0;
+      transition: opacity 0.5s ease;
+    }
+    .cw-card.visible { opacity: 1; }
+
+    .cw-avatar {
+      width: 36px; height: 36px; flex-shrink: 0;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; font-weight: 800; color: #fff;
+    }
+    .cw-body { flex: 1; min-width: 0; }
+    .cw-user { font-size: 12px; font-weight: 700; margin-bottom: 4px; }
+    .cw-msg  { font-size: 15px; color: #fff; line-height: 1.35; font-weight: 600;
+               text-shadow: 0 1px 4px rgba(0,0,0,0.8); word-break: break-word; }
+    .cw-badge {
+      font-size: 9px; font-weight: 800; letter-spacing: 0.8px;
+      text-transform: uppercase; color: rgba(255,255,255,0.4);
+      margin-bottom: 6px;
+    }
+
+    /* ── Scroll mode ── */
+    .scroll-container {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      overflow: hidden;
+      max-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .scroll-track {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 10px;
+      /* animation-duration set inline via JS */
+    }
+    @keyframes scroll-up {
+      from { transform: translateY(0); }
+      to   { transform: translateY(-50%); }
+    }
+    .scroll-message {
+      background: rgba(0,0,0,0.65);
+      backdrop-filter: blur(8px);
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.1);
+      padding: 10px 14px;
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+    }
+    .sm-avatar {
+      width: 28px; height: 28px; flex-shrink: 0;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 800; color: #fff;
+    }
+    .sm-body { flex: 1; min-width: 0; }
+    .sm-user { font-size: 12px; font-weight: 700; color: #7c6af7; margin-bottom: 2px; }
+    .sm-text { font-size: 14px; color: #fff; font-weight: 500; text-shadow: 0 1px 4px rgba(0,0,0,0.8); line-height: 1.3; }
+
+    /* avatar palette */
+    .av-0 { background: #7c6af7; }
+    .av-1 { background: #3b9ef5; }
+    .av-2 { background: #e8733a; }
+    .av-3 { background: #3dba72; }
+    .av-4 { background: #e8449a; }
+    .av-5 { background: #f0a500; }
+    .av-6 { background: #6eb5ff; }
+    .av-7 { background: #e74c3c; }
+  </style>
+</head>
+<body>
+  <!-- Cycle mode element -->
+  <div class="cw-card" id="card">
+    <div class="cw-avatar" id="avatar"></div>
+    <div class="cw-body">
+      <div class="cw-badge">📌 Chat Wall</div>
+      <div class="cw-user" id="cwUser"></div>
+      <div class="cw-msg"  id="cwMsg"></div>
+    </div>
+  </div>
+
+  <!-- Scroll mode element (built dynamically) -->
+  <div class="scroll-container" id="scrollContainer" style="display:none"></div>
+
+  <script>
+    const KEY      = 'streamkit_chatwall';
+    const MODE_KEY = 'streamkit_chatwall_mode';
+    const CYCLE    = 8000; // ms per message
+    const FADE     = 500;  // ms fade duration (matches CSS)
+
+    let messages         = [];
+    let curIdx           = 0;
+    let cycleTimer       = null;
+    let lastRaw          = '';
+    let lastMode         = null; // track current active mode
+    let lastMessagesJson = ''; // track last-rendered scroll messages to avoid rebuilds
+    let lastMessages     = []; // snapshot of messages used for last scroll render
+
+    function avatarClass(username) {
+      let hash = 0;
+      for (let i = 0; i < username.length; i++) hash = (hash * 31 + username.charCodeAt(i)) & 0xfffffff;
+      return 'av-' + (hash % 8);
+    }
+
+    /* ── Cycle mode ── */
+
+    function showMessage(m) {
+      const card = document.getElementById('card');
+      card.classList.remove('visible');
+      setTimeout(() => {
+        document.getElementById('avatar').className = 'cw-avatar ' + avatarClass(m.user);
+        document.getElementById('avatar').textContent = m.user[0].toUpperCase();
+        document.getElementById('cwUser').textContent = m.user;
+        document.getElementById('cwMsg').textContent  = m.msg;
+        card.classList.add('visible');
+      }, FADE);
+    }
+
+    function tick() {
+      if (!messages.length) return;
+      curIdx = curIdx % messages.length;
+      showMessage(messages[curIdx]);
+      curIdx++;
+    }
+
+    function startCycle() {
+      clearInterval(cycleTimer);
+      if (!messages.length) {
+        document.getElementById('card').classList.remove('visible');
+        return;
+      }
+      curIdx = 0;
+      tick();
+      cycleTimer = setInterval(tick, CYCLE);
+    }
+
+    function stopCycle() {
+      clearInterval(cycleTimer);
+      cycleTimer = null;
+      const card = document.getElementById('card');
+      card.classList.remove('visible');
+    }
+
+    /* ── Scroll mode ── */
+
+    function buildScrollMessage(m) {
+      const avCls   = avatarClass(m.user);
+      const initial = m.user[0].toUpperCase();
+      const div = document.createElement('div');
+      div.className = 'scroll-message';
+      div.innerHTML = `
+        <div class="sm-avatar ${avCls}">${initial}</div>
+        <div class="sm-body">
+          <div class="sm-user">${escHtml(m.user)}</div>
+          <div class="sm-text">${escHtml(m.msg)}</div>
+        </div>
+      `;
+      return div;
+    }
+
+    function startScroll() {
+      const container = document.getElementById('scrollContainer');
+      container.innerHTML = '';
+
+      if (!messages.length) return;
+
+      const track = document.createElement('div');
+      track.className = 'scroll-track';
+
+      // primary list
+      messages.forEach(m => track.appendChild(buildScrollMessage(m)));
+
+      if (messages.length > 1) {
+        // duplicate list for seamless loop
+        messages.forEach(m => track.appendChild(buildScrollMessage(m)));
+        const duration = Math.max(8, messages.length * 4) + 's';
+        track.style.animation = `scroll-up ${duration} linear infinite`;
+      }
+      // single message: just show it statically (no animation)
+
+      container.appendChild(track);
+    }
+
+    function stopScroll() {
+      const container = document.getElementById('scrollContainer');
+      container.innerHTML = '';
+      // reset scroll-render memo so a future switch-back rebuilds fresh
+      lastMessagesJson = '';
+      lastMessages     = [];
+    }
+
+    /* Append new front-of-array messages to both halves of an existing track
+       without restarting the CSS animation. Returns true on success. */
+    function appendNewScrollMessages(newCount) {
+      const container = document.getElementById('scrollContainer');
+      const track     = container.querySelector('.scroll-track');
+      if (!track) return false;
+
+      const oldCount = lastMessages.length;
+      const newMsgs  = messages.slice(0, newCount);
+
+      // Existing children: [old primary (oldCount)] + [old duplicate (oldCount)] (if oldCount > 1)
+      // Need to insert newMsgs at the very front of primary, and at the start of duplicate copy.
+      const hadDuplicate = oldCount > 1;
+
+      // 1) Prepend to primary half
+      const primaryFrag = document.createDocumentFragment();
+      newMsgs.forEach(m => primaryFrag.appendChild(buildScrollMessage(m)));
+      track.insertBefore(primaryFrag, track.firstChild);
+
+      // 2) Insert at start of duplicate half (or build duplicate if it didn't exist)
+      if (hadDuplicate) {
+        // duplicate half now starts at index newCount + oldCount
+        const dupStart = track.children[newCount + oldCount] || null;
+        const dupFrag  = document.createDocumentFragment();
+        newMsgs.forEach(m => dupFrag.appendChild(buildScrollMessage(m)));
+        track.insertBefore(dupFrag, dupStart);
+      } else {
+        // previously single (no duplicate, no animation). Now have >=2 messages —
+        // need to add full duplicate half and start animation. This will reset the
+        // animation, but it's the unavoidable transition from static to scrolling.
+        messages.forEach(m => track.appendChild(buildScrollMessage(m)));
+        if (messages.length > 1) {
+          const duration = Math.max(8, messages.length * 4) + 's';
+          track.style.animation = `scroll-up ${duration} linear infinite`;
+        }
+      }
+
+      return true;
+    }
+
+    /* ── Mode switching ── */
+
+    function applyMode(mode) {
+      const card      = document.getElementById('card');
+      const container = document.getElementById('scrollContainer');
+      const modeChanged = mode !== lastMode;
+
+      if (mode === 'scroll') {
+        // hide cycle card, stop cycle
+        stopCycle();
+        card.style.display      = 'none';
+        container.style.display = 'flex';
+
+        const currentJson = JSON.stringify(messages);
+        const hasContent  = !!container.querySelector('.scroll-track');
+
+        if (modeChanged) {
+          // mode just switched to scroll — always full rebuild
+          startScroll();
+        } else if (currentJson === lastMessagesJson && hasContent) {
+          // identical data and track present — no-op, keep animation running
+        } else if (!lastMessagesJson || !hasContent) {
+          // first render or track missing — full build
+          startScroll();
+        } else {
+          // try smart append: did only new messages get added at the front?
+          const oldCount = lastMessages.length;
+          const newCount = messages.length - oldCount;
+          let appended = false;
+          if (newCount > 0) {
+            const tail = messages.slice(newCount);
+            // compare tail to lastMessages by JSON
+            if (JSON.stringify(tail) === JSON.stringify(lastMessages)) {
+              appended = appendNewScrollMessages(newCount);
+            }
+          }
+          if (!appended) {
+            // removed/reordered/edited — fall back to full rebuild
+            startScroll();
+          }
+        }
+
+        lastMessagesJson = currentJson;
+        lastMessages     = messages.slice();
+      } else {
+        // cycle (default)
+        stopScroll();
+        container.style.display = 'none';
+        card.style.display      = '';
+        startCycle();
+      }
+    }
+
+    /* ── Polling ── */
+
+    function poll() {
+      const raw  = localStorage.getItem(KEY);
+      const mode = localStorage.getItem(MODE_KEY) || 'cycle';
+
+      const dataChanged = raw !== lastRaw;
+      const modeChanged = mode !== lastMode;
+
+      if (!dataChanged && !modeChanged) return;
+
+      lastRaw  = raw;
+      lastMode = mode;
+
+      try { messages = JSON.parse(raw) || []; }
+      catch(e) { messages = []; }
+
+      applyMode(mode);
+    }
+
+    poll();
+    setInterval(poll, 2000);
+  </script>
+</body>
+</html>

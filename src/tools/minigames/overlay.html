@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Mini-Games Overlay</title>
+  <link rel="stylesheet" href="../../../assets/styles/overlay.css">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: transparent; padding: 16px; font-family: 'Segoe UI', system-ui, sans-serif; }
+
+    .game-card {
+      background: rgba(10,10,18,0.82);
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 14px;
+      padding: 16px 20px;
+      min-width: 320px;
+      max-width: 420px;
+      display: none;
+      flex-direction: column;
+      gap: 10px;
+      backdrop-filter: blur(6px);
+    }
+    .game-card.visible { display: flex; }
+
+    /* ── shared ── */
+    .card-title {
+      font-size: 11px; font-weight: 700; letter-spacing: 1.2px;
+      text-transform: uppercase; color: rgba(255,255,255,0.45);
+      margin-bottom: 2px;
+    }
+    .bar-track {
+      height: 8px; background: rgba(255,255,255,0.10);
+      border-radius: 4px; overflow: hidden;
+    }
+    .bar-fill {
+      height: 100%; border-radius: 4px;
+      transition: width 0.6s cubic-bezier(.4,0,.2,1), background 0.4s;
+    }
+
+    /* ── POLL ── */
+    #pollCard .question {
+      font-size: 18px; font-weight: 700; color: #fff;
+      line-height: 1.3; margin-bottom: 4px;
+    }
+    #pollCard .timer-row {
+      display: flex; align-items: center; justify-content: space-between;
+      font-size: 13px; color: rgba(255,255,255,0.5);
+    }
+    #pollCard .timer-val {
+      font-size: 22px; font-weight: 800; color: #fff;
+      font-variant-numeric: tabular-nums;
+    }
+    #pollCard .timer-val.urgent { color: #e74c3c; }
+    #pollCard .timer-val.ended { color: #2ecc71; font-size: 15px; }
+
+    .opt-row { display: flex; flex-direction: column; gap: 4px; }
+    .opt-label-row {
+      display: flex; justify-content: space-between; align-items: baseline;
+    }
+    .opt-name { font-size: 14px; font-weight: 600; color: #fff; }
+    .opt-pct  { font-size: 13px; font-weight: 700; color: rgba(255,255,255,0.6); }
+    .opt-row.winner .opt-name { color: #2ecc71; }
+    .opt-row.winner .opt-pct  { color: #2ecc71; }
+    .opt-row.winner .bar-fill { background: #2ecc71 !important; }
+
+    /* ── BATTLE ── */
+    #battleCard .teams {
+      display: flex; align-items: center; gap: 12px;
+    }
+    .team-block {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; gap: 4px;
+    }
+    .team-name { font-size: 14px; font-weight: 700; color: rgba(255,255,255,0.75); text-align: center; }
+    .team-score {
+      font-size: 56px; font-weight: 900; color: #fff; line-height: 1;
+      text-shadow: 0 2px 12px rgba(0,0,0,0.5);
+    }
+    .team-a .team-score { color: #3b9ef5; }
+    .team-b .team-score { color: #e8733a; }
+    .vs-sep { font-size: 20px; font-weight: 800; color: rgba(255,255,255,0.3); flex-shrink: 0; }
+    .battle-winner {
+      text-align: center; font-size: 16px; font-weight: 800;
+      color: #f0c040; padding: 6px 12px;
+      background: rgba(240,192,64,0.15);
+      border: 1px solid rgba(240,192,64,0.35);
+      border-radius: 8px;
+      display: none;
+    }
+    .battle-winner.show { display: block; }
+
+    /* ── TRIVIA ── */
+    #triviaCard .question {
+      font-size: 17px; font-weight: 700; color: #fff;
+      line-height: 1.35; margin-bottom: 4px;
+    }
+    #triviaCard .timer-val {
+      font-size: 32px; font-weight: 900; color: #fff;
+      text-align: center; font-variant-numeric: tabular-nums;
+    }
+    #triviaCard .timer-val.urgent { color: #e74c3c; }
+    .answer-box {
+      padding: 10px 14px;
+      background: rgba(46,204,113,0.15);
+      border: 1px solid rgba(46,204,113,0.4);
+      border-radius: 8px;
+      font-size: 16px; font-weight: 700; color: #2ecc71;
+      display: none;
+    }
+    .answer-box.show { display: block; }
+    .waiting-label {
+      font-size: 13px; color: rgba(255,255,255,0.4);
+      text-align: center; font-style: italic;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- POLL -->
+  <div class="game-card" id="pollCard">
+    <div class="card-title">📊 Poll</div>
+    <div class="question" id="pollQ"></div>
+    <div id="pollOptions"></div>
+    <div class="timer-row">
+      <span>Time remaining</span>
+      <span class="timer-val" id="pollTimer"></span>
+    </div>
+  </div>
+
+  <!-- BATTLE -->
+  <div class="game-card" id="battleCard">
+    <div class="card-title">⚔️ Team Battle</div>
+    <div class="teams">
+      <div class="team-block team-a">
+        <div class="team-name" id="teamAName">Team A</div>
+        <div class="team-score" id="teamAScore">0</div>
+      </div>
+      <div class="vs-sep">VS</div>
+      <div class="team-block team-b">
+        <div class="team-name" id="teamBName">Team B</div>
+        <div class="team-score" id="teamBScore">0</div>
+      </div>
+    </div>
+    <div class="battle-winner" id="battleWinner"></div>
+  </div>
+
+  <!-- TRIVIA -->
+  <div class="game-card" id="triviaCard">
+    <div class="card-title">🧠 Trivia</div>
+    <div class="question" id="triviaQ"></div>
+    <div class="timer-val" id="triviaTimer"></div>
+    <div class="waiting-label" id="triviaWaiting">Thinking…</div>
+    <div class="answer-box" id="triviaAnswer"></div>
+  </div>
+
+  <script>
+    const MG_POLL   = 'streamkit_mg_poll';
+    const MG_BATTLE = 'streamkit_mg_battle';
+    const MG_TRIVIA = 'streamkit_mg_trivia';
+    const LETTERS   = ['A','B','C','D'];
+    const COLORS    = ['#7c6af7','#3b9ef5','#e8733a','#e8449a'];
+
+    let lastPoll = '', lastBattle = '', lastTrivia = '';
+
+    function update() {
+      const pollRaw   = localStorage.getItem(MG_POLL);
+      const battleRaw = localStorage.getItem(MG_BATTLE);
+      const triviaRaw = localStorage.getItem(MG_TRIVIA);
+
+      // ── Poll ──
+      if (pollRaw !== lastPoll) {
+        lastPoll = pollRaw;
+        const p = pollRaw ? JSON.parse(pollRaw) : null;
+        const card = document.getElementById('pollCard');
+        if (p && p.show) {
+          card.classList.add('visible');
+          document.getElementById('pollQ').textContent = p.question;
+
+          const total = p.options.reduce((s, o) => s + o.votes, 0);
+          const maxV  = Math.max(...p.options.map(o => o.votes));
+          const container = document.getElementById('pollOptions');
+          // build option rows (reuse existing if count matches)
+          if (container.children.length !== p.options.length) {
+            container.innerHTML = '';
+            p.options.forEach((_, i) => {
+              const div = document.createElement('div');
+              div.className = 'opt-row';
+              div.innerHTML = `
+                <div class="opt-label-row">
+                  <span class="opt-name"></span>
+                  <span class="opt-pct"></span>
+                </div>
+                <div class="bar-track"><div class="bar-fill"></div></div>`;
+              container.appendChild(div);
+            });
+          }
+          p.options.forEach((opt, i) => {
+            const row  = container.children[i];
+            const pct  = total > 0 ? Math.round((opt.votes / total) * 100) : 0;
+            const isW  = p.ended && opt.votes === maxV && maxV > 0;
+            row.className = 'opt-row' + (isW ? ' winner' : '');
+            row.querySelector('.opt-name').textContent = `${LETTERS[i]}. ${opt.label}`;
+            row.querySelector('.opt-pct').textContent  = `${pct}%`;
+            row.querySelector('.bar-fill').style.width = pct + '%';
+            row.querySelector('.bar-fill').style.background = isW ? '' : COLORS[i] || COLORS[0];
+          });
+
+          const timerEl = document.getElementById('pollTimer');
+          if (p.ended) {
+            timerEl.textContent = 'Ended';
+            timerEl.className = 'timer-val ended';
+          } else {
+            timerEl.textContent = p.timeLeft + 's';
+            timerEl.className = 'timer-val' + (p.timeLeft <= 10 ? ' urgent' : '');
+          }
+        } else {
+          card.classList.remove('visible');
+        }
+      }
+
+      // ── Battle ──
+      if (battleRaw !== lastBattle) {
+        lastBattle = battleRaw;
+        const b = battleRaw ? JSON.parse(battleRaw) : null;
+        const card = document.getElementById('battleCard');
+        if (b && (b.teamA.score > 0 || b.teamB.score > 0 || b.winner)) {
+          card.classList.add('visible');
+          document.getElementById('teamAName').textContent  = b.teamA.name;
+          document.getElementById('teamAScore').textContent = b.teamA.score;
+          document.getElementById('teamBName').textContent  = b.teamB.name;
+          document.getElementById('teamBScore').textContent = b.teamB.score;
+          const winEl = document.getElementById('battleWinner');
+          if (b.winner) {
+            winEl.textContent = '🏆 ' + b.winner + ' wins!';
+            winEl.classList.add('show');
+          } else {
+            winEl.classList.remove('show');
+          }
+        } else {
+          card.classList.remove('visible');
+        }
+      }
+
+      // ── Trivia ──
+      if (triviaRaw !== lastTrivia) {
+        lastTrivia = triviaRaw;
+        const t = triviaRaw ? JSON.parse(triviaRaw) : null;
+        const card = document.getElementById('triviaCard');
+        if (t && t.show) {
+          card.classList.add('visible');
+          document.getElementById('triviaQ').textContent = t.question;
+          const timerEl = document.getElementById('triviaTimer');
+          timerEl.textContent = t.timeLeft + 's';
+          timerEl.className = 'timer-val' + (t.timeLeft <= 5 ? ' urgent' : '');
+          const ansEl     = document.getElementById('triviaAnswer');
+          const waitingEl = document.getElementById('triviaWaiting');
+          if (t.revealed && t.answer) {
+            ansEl.textContent = '✅ ' + t.answer;
+            ansEl.classList.add('show');
+            waitingEl.style.display = 'none';
+            timerEl.style.display = 'none';
+          } else {
+            ansEl.classList.remove('show');
+            waitingEl.style.display = '';
+            timerEl.style.display = '';
+          }
+        } else {
+          card.classList.remove('visible');
+        }
+      }
+    }
+
+    update();
+    setInterval(update, 1000);
+  </script>
+</body>
+</html>

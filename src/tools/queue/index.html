@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Viewer Queue — StreamKit</title>
+  <link rel="stylesheet" href="../../../assets/styles/dashboard.css">
+  <script src="../../../assets/js/util.js"></script>
+  <style>
+    body { padding: 20px; }
+    .tool-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+
+    /* Current / Next */
+    .now-next { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+
+    .slot {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px 20px;
+      text-align: center;
+    }
+    .slot.now { border-color: var(--accent); }
+    .slot-label { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 1.2px; margin-bottom: 6px; }
+    .slot-name {
+      font-size: 26px;
+      font-weight: 800;
+      color: var(--text);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .slot.now .slot-name { color: var(--accent); }
+    .slot-note { font-size: 13px; color: var(--muted); margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .empty-slot { color: var(--muted); font-style: italic; font-size: 18px; }
+
+    /* Controls */
+    .controls { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+    .controls .btn { padding: 16px; font-size: 15px; }
+
+    /* Add area */
+    .add-section { margin-bottom: 20px; }
+    .add-section h3 { margin-bottom: 8px; }
+    .add-row { display: flex; gap: 8px; margin-bottom: 8px; }
+    .add-row input { flex: 1; }
+    .note-row { display: flex; gap: 8px; }
+    .note-row input { flex: 1; font-size: 14px; }
+
+    /* Queue list */
+    .queue-section { }
+    .queue-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+    .queue-count { font-size: 13px; color: var(--muted); }
+
+    .queue-list { display: flex; flex-direction: column; gap: 6px; max-height: 300px; overflow-y: auto; }
+
+    .queue-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      background: var(--bg3);
+      border-radius: 8px;
+      border: 1px solid transparent;
+      transition: border-color 0.15s;
+    }
+    .queue-item:hover { border-color: var(--border); }
+    .queue-pos { font-size: 13px; color: var(--muted); font-weight: 700; min-width: 22px; }
+    .queue-name { flex: 1; font-weight: 600; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .queue-note-txt { font-size: 13px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 120px; }
+    .queue-del { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 18px; opacity: 0; transition: opacity 0.15s; padding: 0 4px; }
+    .queue-item:hover .queue-del { opacity: 1; }
+    .queue-del:hover { color: var(--red); }
+
+    .empty-queue { color: var(--muted); text-align: center; padding: 24px; font-size: 15px; }
+  </style>
+</head>
+<body>
+  <div class="tool-header">
+    <h1>Viewer Queue</h1>
+    <span id="queueCountBadge" style="color:var(--muted);font-size:14px"></span>
+  </div>
+
+  <div class="now-next">
+    <div class="slot now">
+      <div class="slot-label">🎮 Now Playing</div>
+      <div class="slot-name" id="nowName"><span class="empty-slot">—</span></div>
+      <div class="slot-note" id="nowNote"></div>
+    </div>
+    <div class="slot">
+      <div class="slot-label">⏭ Up Next</div>
+      <div class="slot-name" id="nextName"><span class="empty-slot">—</span></div>
+      <div class="slot-note" id="nextNote"></div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button class="btn btn-primary" onclick="nextViewer()">⏭ NEXT</button>
+    <button class="btn btn-ghost"   onclick="skipCurrent()">⏩ SKIP</button>
+    <button class="btn btn-danger"  onclick="clearQueue()">🗑 CLEAR</button>
+  </div>
+
+  <div class="add-section card">
+    <h3 style="margin-bottom:10px">Add Viewers</h3>
+    <div class="add-row">
+      <input type="text" id="addNames" placeholder="Viewer name(s) — one per line or comma-separated">
+      <button class="btn btn-primary" onclick="addViewers()">Add</button>
+    </div>
+    <div class="note-row">
+      <input type="text" id="addNote" placeholder="Optional note (e.g. Minecraft, ranked 1v1)">
+    </div>
+    <div style="margin-top:8px;display:flex;gap:8px">
+      <input type="text" id="bulkPaste" placeholder="Paste bulk list here and press Enter" style="flex:1">
+    </div>
+    <p style="font-size:12px;color:var(--muted);margin-top:6px">Tip: separate multiple names with commas or new lines</p>
+  </div>
+
+  <div class="queue-section mt-16">
+    <div class="queue-header">
+      <h3>Queue</h3>
+      <span class="queue-count" id="listCount"></span>
+    </div>
+    <div class="queue-list" id="queueList"></div>
+  </div>
+
+  <script>
+    const KEY = 'streamkit_queue';
+    let current = null;
+    let queue = [];
+
+    function load() {
+      try {
+        const s = localStorage.getItem(KEY);
+        if (s) { const d = JSON.parse(s); current = d.current || null; queue = d.queue || []; }
+      } catch(e) {}
+      render();
+    }
+    function save() { localStorage.setItem(KEY, JSON.stringify({ current, queue })); }
+
+    function addViewers() {
+      const raw = document.getElementById('addNames').value;
+      const note = document.getElementById('addNote').value.trim();
+      const names = raw.split(/[\n,]+/).map(n => n.trim()).filter(Boolean);
+      names.forEach(name => queue.push({ id: uid(), name, note }));
+      document.getElementById('addNames').value = '';
+      document.getElementById('addNote').value = '';
+      save();
+      render();
+    }
+
+    document.getElementById('bulkPaste').addEventListener('keydown', e => {
+      if (e.key !== 'Enter') return;
+      const raw = e.target.value;
+      const names = raw.split(/[\n,]+/).map(n => n.trim()).filter(Boolean);
+      names.forEach(name => queue.push({ id: uid(), name, note: '' }));
+      e.target.value = '';
+      save();
+      render();
+    });
+
+    document.getElementById('addNames').addEventListener('keydown', e => {
+      if (e.key === 'Enter' && !e.shiftKey) addViewers();
+    });
+
+    function nextViewer() {
+      if (!queue.length) return;
+      current = queue.shift();
+      save();
+      render();
+    }
+
+    function skipCurrent() {
+      current = queue.length ? queue.shift() : null;
+      save();
+      render();
+    }
+
+    function clearQueue() {
+      if (!confirm('Clear the entire queue?')) return;
+      queue = [];
+      current = null;
+      save();
+      render();
+    }
+
+    function removeFromQueue(id) {
+      queue = queue.filter(v => v.id !== id);
+      save();
+      render();
+    }
+
+    function render() {
+      // Now slot
+      const nn = document.getElementById('nowName');
+      const no = document.getElementById('nowNote');
+      if (current) {
+        nn.textContent = current.name;
+        no.textContent = current.note || '';
+      } else {
+        nn.innerHTML = '<span class="empty-slot">—</span>';
+        no.textContent = '';
+      }
+
+      // Next slot
+      const xn = document.getElementById('nextName');
+      const xo = document.getElementById('nextNote');
+      if (queue.length) {
+        xn.textContent = queue[0].name;
+        xo.textContent = queue[0].note || '';
+      } else {
+        xn.innerHTML = '<span class="empty-slot">—</span>';
+        xo.textContent = '';
+      }
+
+      // Counts
+      document.getElementById('queueCountBadge').textContent = queue.length ? `${queue.length} in queue` : '';
+      document.getElementById('listCount').textContent = queue.length + ' waiting';
+
+      // Queue list
+      const list = document.getElementById('queueList');
+      if (!queue.length) {
+        list.innerHTML = '<div class="empty-queue">Queue is empty — add some viewers!</div>';
+        return;
+      }
+      list.innerHTML = '';
+      queue.forEach((v, i) => {
+        const div = document.createElement('div');
+        div.className = 'queue-item';
+        div.innerHTML = `
+          <span class="queue-pos">#${i+1}</span>
+          <span class="queue-name">${esc(v.name)}</span>
+          ${v.note ? `<span class="queue-note-txt">${esc(v.note)}</span>` : ''}
+          <button class="queue-del" onclick="removeFromQueue('${v.id}')" title="Remove">×</button>
+        `;
+        list.appendChild(div);
+      });
+    }
+
+    load();
+  </script>
+</body>
+</html>

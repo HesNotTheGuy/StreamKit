@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scratch Pad — StreamKit</title>
+  <link rel="stylesheet" href="../../../assets/styles/dashboard.css">
+  <script src="../../../assets/js/util.js"></script>
+  <style>
+    body { padding: 20px; display: flex; flex-direction: column; height: 100vh; box-sizing: border-box; }
+
+    .tool-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 14px; flex-shrink: 0;
+    }
+    .header-left { display: flex; align-items: center; gap: 12px; }
+    .save-indicator {
+      display: flex; align-items: center; gap: 5px;
+      font-size: 12px; color: var(--muted);
+      transition: color 0.3s;
+    }
+    .save-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--muted);
+      transition: background 0.3s;
+    }
+    .save-indicator.saved { color: var(--green); }
+    .save-indicator.saved .save-dot { background: var(--green); }
+    .save-indicator.saving { color: var(--yellow, #f0a500); }
+    .save-indicator.saving .save-dot { background: var(--yellow, #f0a500); }
+
+    .header-actions { display: flex; gap: 8px; align-items: center; }
+
+    /* Quick-insert chips */
+    .quick-row {
+      display: flex; gap: 6px; flex-wrap: wrap;
+      margin-bottom: 12px; flex-shrink: 0;
+    }
+    .quick-chip {
+      padding: 4px 12px;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      font-size: 12px;
+      color: var(--muted);
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .quick-chip:hover { border-color: var(--accent); color: var(--text); }
+
+    /* Main textarea */
+    .pad-wrap {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+    .pad-textarea {
+      flex: 1;
+      width: 100%;
+      resize: none;
+      padding: 16px;
+      font-size: 15px;
+      line-height: 1.65;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      color: var(--text);
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      outline: none;
+      transition: border-color 0.15s;
+      box-sizing: border-box;
+    }
+    .pad-textarea:focus { border-color: var(--accent); }
+    .pad-textarea::placeholder { color: var(--muted); }
+
+    .pad-footer {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-top: 10px; flex-shrink: 0;
+      font-size: 12px; color: var(--muted);
+    }
+    .char-count { font-variant-numeric: tabular-nums; }
+
+    /* Sections / bookmarks */
+    .sections-panel {
+      display: none;
+      flex-direction: column;
+      gap: 6px;
+      padding: 12px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      margin-bottom: 12px;
+      flex-shrink: 0;
+      max-height: 150px;
+      overflow-y: auto;
+    }
+    .sections-panel.open { display: flex; }
+    .section-item {
+      display: flex; align-items: center; gap: 8px;
+      padding: 5px 8px;
+      background: var(--bg3);
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      color: var(--text);
+      transition: background 0.1s;
+    }
+    .section-item:hover { background: rgba(124,106,247,0.1); }
+    .section-item .sec-line { color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; min-width: 28px; }
+
+    @keyframes flash-save {
+      0%   { background: rgba(46,204,113,0.15); }
+      100% { background: var(--bg2); }
+    }
+    .pad-textarea.flash { animation: flash-save 0.6s ease; }
+  </style>
+</head>
+<body>
+  <div class="tool-header">
+    <div class="header-left">
+      <h1>Scratch Pad</h1>
+      <div class="save-indicator" id="saveIndicator">
+        <div class="save-dot"></div>
+        <span id="saveLabel">All saved</span>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-ghost btn-sm" onclick="toggleSections()" id="sectionsBtn" title="Jump to heading">📑 Headings</button>
+      <button class="btn btn-ghost btn-sm" onclick="copyAll()">📋 Copy All</button>
+      <button class="btn btn-ghost btn-sm" style="color:var(--muted)" onclick="clearPad()">🗑 Clear</button>
+    </div>
+  </div>
+
+  <!-- Headings/sections panel -->
+  <div class="sections-panel" id="sectionsPanel"></div>
+
+  <!-- Quick-insert chips -->
+  <div class="quick-row" id="quickRow"></div>
+
+  <!-- Textarea -->
+  <div class="pad-wrap">
+    <textarea class="pad-textarea" id="padText"
+      placeholder="Type anything — stream notes, links, chat messages to send, shoutout queue, VOD timestamps…&#10;&#10;Use ## headings to organize sections. Hit the 📑 Headings button to jump between them."></textarea>
+  </div>
+
+  <div class="pad-footer">
+    <span class="char-count" id="charCount">0 characters</span>
+    <span id="lineCount">0 lines</span>
+  </div>
+
+  <script>
+    const KEY = 'streamkit_scratchpad';
+    let saveTimer = null;
+    let sectionsOpen = false;
+
+    const QUICK_INSERTS = [
+      { label: '## Section', text: '## ' },
+      { label: '📌 TODO', text: '[ ] ' },
+      { label: '✅ Done', text: '[x] ' },
+      { label: '🔗 Link', text: '→ ' },
+      { label: '⏱ Timestamp', text: () => new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' }) + ' — ' },
+      { label: '---', text: '\n---\n' },
+    ];
+
+    const ta = document.getElementById('padText');
+
+    // ── Load ──
+    function load() {
+      const saved = localStorage.getItem(KEY) || '';
+      ta.value = saved;
+      updateCounts();
+      showSaved();
+    }
+
+    // ── Save (debounced 400ms) ──
+    function scheduleSave() {
+      setSaving();
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(() => {
+        localStorage.setItem(KEY, ta.value);
+        showSaved();
+        if (sectionsOpen) renderSections();
+      }, 400);
+    }
+
+    function setSaving() {
+      const el = document.getElementById('saveIndicator');
+      el.className = 'save-indicator saving';
+      document.getElementById('saveLabel').textContent = 'Saving…';
+    }
+    function showSaved() {
+      const el = document.getElementById('saveIndicator');
+      el.className = 'save-indicator saved';
+      document.getElementById('saveLabel').textContent = 'Saved';
+      setTimeout(() => {
+        el.className = 'save-indicator';
+        document.getElementById('saveLabel').textContent = 'All saved';
+      }, 2000);
+    }
+
+    // ── Counts ──
+    function updateCounts() {
+      const v = ta.value;
+      const chars = v.length;
+      const lines = v ? v.split('\n').length : 0;
+      document.getElementById('charCount').textContent = chars.toLocaleString() + ' character' + (chars !== 1 ? 's' : '');
+      document.getElementById('lineCount').textContent = lines.toLocaleString() + ' line' + (lines !== 1 ? 's' : '');
+    }
+
+    ta.addEventListener('input', () => {
+      updateCounts();
+      scheduleSave();
+    });
+
+    // ── Ctrl+S to force-save ──
+    ta.addEventListener('keydown', e => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        clearTimeout(saveTimer);
+        localStorage.setItem(KEY, ta.value);
+        showSaved();
+        // Flash
+        ta.classList.remove('flash');
+        void ta.offsetWidth;
+        ta.classList.add('flash');
+      }
+      // Tab → insert 2 spaces instead of losing focus
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        const start = ta.selectionStart;
+        const end   = ta.selectionEnd;
+        ta.value = ta.value.substring(0, start) + '  ' + ta.value.substring(end);
+        ta.selectionStart = ta.selectionEnd = start + 2;
+        scheduleSave();
+      }
+    });
+
+    // ── Copy all ──
+    function copyAll() {
+      if (!ta.value.trim()) { alert('Nothing to copy.'); return; }
+      navigator.clipboard.writeText(ta.value).then(() => {
+        const btn = document.querySelector('[onclick="copyAll()"]');
+        const orig = btn.textContent;
+        btn.textContent = '✅ Copied!';
+        setTimeout(() => { btn.textContent = orig; }, 2000);
+      }).catch(() => {
+        ta.select();
+        document.execCommand('copy');
+      });
+    }
+
+    // ── Clear ──
+    function clearPad() {
+      if (ta.value && !confirm('Clear all notes? This cannot be undone.')) return;
+      ta.value = '';
+      localStorage.setItem(KEY, '');
+      updateCounts();
+      showSaved();
+      if (sectionsOpen) renderSections();
+    }
+
+    // ── Quick inserts ──
+    function buildQuickRow() {
+      const row = document.getElementById('quickRow');
+      QUICK_INSERTS.forEach(q => {
+        const btn = document.createElement('button');
+        btn.className = 'quick-chip';
+        btn.textContent = q.label;
+        btn.onclick = () => insertText(typeof q.text === 'function' ? q.text() : q.text);
+        row.appendChild(btn);
+      });
+    }
+
+    function insertText(text) {
+      const start = ta.selectionStart;
+      const end   = ta.selectionEnd;
+      // If at start of line and inserting a block, ensure it starts on own line
+      const before = ta.value.substring(0, start);
+      const after  = ta.value.substring(end);
+      ta.value = before + text + after;
+      const cursor = start + text.length;
+      ta.selectionStart = ta.selectionEnd = cursor;
+      ta.focus();
+      updateCounts();
+      scheduleSave();
+    }
+
+    // ── Sections panel (jump to ## headings) ──
+    function toggleSections() {
+      sectionsOpen = !sectionsOpen;
+      document.getElementById('sectionsPanel').classList.toggle('open', sectionsOpen);
+      document.getElementById('sectionsBtn').style.color = sectionsOpen ? 'var(--accent)' : '';
+      if (sectionsOpen) renderSections();
+    }
+
+    function renderSections() {
+      const panel = document.getElementById('sectionsPanel');
+      panel.innerHTML = '';
+      const lines = ta.value.split('\n');
+      const headings = [];
+      lines.forEach((line, i) => {
+        if (/^#{1,4}\s/.test(line)) {
+          headings.push({ text: line.replace(/^#+\s*/, ''), lineNum: i + 1 });
+        }
+      });
+      if (!headings.length) {
+        panel.innerHTML = '<span style="color:var(--muted);font-size:13px;padding:4px 8px">No ## headings found. Add one with the chip above.</span>';
+        return;
+      }
+      headings.forEach(h => {
+        const div = document.createElement('div');
+        div.className = 'section-item';
+        div.innerHTML = `<span class="sec-line">L${h.lineNum}</span><span>${esc(h.text)}</span>`;
+        div.onclick = () => jumpToLine(h.lineNum);
+        panel.appendChild(div);
+      });
+    }
+
+    function jumpToLine(lineNum) {
+      const lines = ta.value.split('\n');
+      let pos = 0;
+      for (let i = 0; i < lineNum - 1 && i < lines.length; i++) {
+        pos += lines[i].length + 1;
+      }
+      ta.focus();
+      ta.selectionStart = ta.selectionEnd = pos;
+      // Scroll to that position
+      let lineHeight = parseInt(getComputedStyle(ta).lineHeight);
+      if (!Number.isFinite(lineHeight) || lineHeight <= 0) {
+        // Fallback: estimate from font-size * 1.2
+        const fontSize = parseFloat(getComputedStyle(ta).fontSize) || 14;
+        lineHeight = Math.round(fontSize * 1.2);
+      }
+      ta.scrollTop = (lineNum - 3) * lineHeight;
+    }
+
+    buildQuickRow();
+    load();
+  </script>
+</body>
+</html>

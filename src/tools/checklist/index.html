@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stream Checklist — StreamKit</title>
+  <link rel="stylesheet" href="../../../assets/styles/dashboard.css">
+  <script src="../../../assets/js/util.js"></script>
+  <style>
+    body { padding: 20px; }
+
+    .tool-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+
+    .sections { display: flex; flex-direction: column; gap: 20px; }
+
+    .section-card { }
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .section-title { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 1.2px; }
+    .section-progress { font-size: 12px; color: var(--muted); }
+
+    .task-list { display: flex; flex-direction: column; gap: 4px; }
+
+    .task-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      background: var(--bg3);
+      border: 1px solid transparent;
+      transition: border-color 0.15s;
+      min-height: 48px;
+    }
+    .task-item:hover { border-color: var(--border); }
+    .task-item.checked { opacity: 0.55; }
+
+    .task-label {
+      flex: 1;
+      font-size: 15px;
+      cursor: pointer;
+      outline: none;
+      background: transparent;
+      border: none;
+      color: var(--text);
+      font-family: inherit;
+    }
+    .task-label:focus { color: var(--accent); }
+    .task-item.checked .task-label { text-decoration: line-through; color: var(--muted); }
+
+    .interval-badge {
+      font-size: 11px;
+      color: var(--muted);
+      padding: 2px 8px;
+      border-radius: 10px;
+      background: var(--bg2);
+      white-space: nowrap;
+      cursor: pointer;
+    }
+    .interval-badge.due {
+      background: rgba(240,165,0,0.2);
+      color: var(--yellow);
+      animation: flash-red 1s infinite;
+    }
+
+    .task-del {
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 18px;
+      line-height: 1;
+      padding: 0 4px;
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+    .task-item:hover .task-del { opacity: 1; }
+    .task-del:hover { color: var(--red); }
+
+    .add-task-row { margin-top: 8px; }
+    .add-task-row input {
+      font-size: 14px;
+      padding: 8px 12px;
+      border-style: dashed;
+    }
+
+    .footer-row { display: flex; justify-content: flex-end; margin-top: 20px; }
+
+    /* interval modal */
+    .modal-bg {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.7);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-bg.open { display: flex; }
+    .modal {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 24px;
+      width: 300px;
+    }
+    .modal h2 { margin-bottom: 16px; }
+    .modal-row { display: flex; gap: 10px; align-items: center; margin-top: 12px; }
+  </style>
+</head>
+<body>
+  <div class="tool-header">
+    <h1>Stream Checklist</h1>
+    <button class="btn btn-ghost btn-sm" onclick="resetAll()">Reset All</button>
+  </div>
+
+  <div class="sections">
+    <div class="card section-card" id="sec-pre">
+      <div class="section-header">
+        <span class="section-title">🟢 Pre-Stream</span>
+        <span class="section-progress" id="prog-pre"></span>
+      </div>
+      <div class="task-list" id="list-pre"></div>
+      <div class="add-task-row">
+        <input type="text" placeholder="+ Add task…" onkeydown="addOnEnter(event,'pre')">
+      </div>
+    </div>
+
+    <div class="card section-card" id="sec-mid">
+      <div class="section-header">
+        <span class="section-title">🔴 Mid-Stream</span>
+        <span class="section-progress" id="prog-mid"></span>
+      </div>
+      <div class="task-list" id="list-mid"></div>
+      <div class="add-task-row">
+        <input type="text" placeholder="+ Add task…" onkeydown="addOnEnter(event,'mid')">
+      </div>
+    </div>
+
+    <div class="card section-card" id="sec-post">
+      <div class="section-header">
+        <span class="section-title">⚫ Post-Stream</span>
+        <span class="section-progress" id="prog-post"></span>
+      </div>
+      <div class="task-list" id="list-post"></div>
+      <div class="add-task-row">
+        <input type="text" placeholder="+ Add task…" onkeydown="addOnEnter(event,'post')">
+      </div>
+    </div>
+  </div>
+
+  <div class="footer-row">
+    <button class="btn btn-ghost btn-sm" style="color:var(--muted)" onclick="clearDone()">Remove checked</button>
+  </div>
+
+  <!-- Interval modal -->
+  <div class="modal-bg" id="intervalModal">
+    <div class="modal">
+      <h2>Set Reminder Interval</h2>
+      <p style="color:var(--muted);font-size:14px;">Auto-highlights this task after the interval. Set 0 to disable.</p>
+      <div class="modal-row">
+        <input type="number" id="intervalInput" min="0" max="999" placeholder="Minutes" style="width:100px">
+        <span style="color:var(--muted)">minutes</span>
+      </div>
+      <div class="modal-row" style="justify-content:flex-end;">
+        <button class="btn btn-ghost btn-sm" onclick="closeIntervalModal()">Cancel</button>
+        <button class="btn btn-primary btn-sm" onclick="saveInterval()">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const KEY = 'streamkit_checklist_tasks';
+    let tasks = [];
+    let editingIntervalId = null;
+
+    const DEFAULTS = {
+      pre:  ['Set up scene', 'Check audio levels', 'Enable alerts', 'Check stream key', 'Start recording'],
+      mid:  ['Mention Discord', 'Drink water', 'Check chat'],
+      post: ['End recording', 'Save VOD', 'Post in Discord', 'Close stream software']
+    };
+
+    function load() {
+      try {
+        const s = localStorage.getItem(KEY);
+        tasks = s ? JSON.parse(s) : buildDefaults();
+      } catch(e) { tasks = buildDefaults(); }
+      if (!tasks.length) tasks = buildDefaults();
+      render();
+    }
+
+    function buildDefaults() {
+      const out = [];
+      for (const [section, labels] of Object.entries(DEFAULTS)) {
+        labels.forEach(label => out.push({ id: uid(), label, section, checked: false, interval: 0, checkedAt: null }));
+      }
+      return out;
+    }
+
+    function save() { localStorage.setItem(KEY, JSON.stringify(tasks)); }
+
+    function addOnEnter(e, section) {
+      if (e.key !== 'Enter') return;
+      const input = e.target;
+      const label = input.value.trim();
+      if (!label) return;
+      tasks.push({ id: uid(), label, section, checked: false, interval: 0, checkedAt: null });
+      input.value = '';
+      save();
+      render();
+    }
+
+    function toggle(id) {
+      const t = tasks.find(t => t.id === id);
+      if (!t) return;
+      t.checked = !t.checked;
+      t.checkedAt = t.checked ? Date.now() : null;
+      save();
+      render();
+    }
+
+    function rename(id, val) {
+      const t = tasks.find(t => t.id === id);
+      if (t) { t.label = val; save(); }
+    }
+
+    function deleteTask(id) {
+      tasks = tasks.filter(t => t.id !== id);
+      save();
+      render();
+    }
+
+    function resetAll() {
+      tasks.forEach(t => { t.checked = false; t.checkedAt = null; });
+      save();
+      render();
+    }
+
+    function clearDone() {
+      tasks = tasks.filter(t => !t.checked);
+      save();
+      render();
+    }
+
+    function openIntervalModal(id) {
+      editingIntervalId = id;
+      const t = tasks.find(t => t.id === id);
+      document.getElementById('intervalInput').value = t ? (t.interval || 0) : 0;
+      document.getElementById('intervalModal').classList.add('open');
+    }
+    function closeIntervalModal() {
+      document.getElementById('intervalModal').classList.remove('open');
+      editingIntervalId = null;
+    }
+    function saveInterval() {
+      const t = tasks.find(t => t.id === editingIntervalId);
+      if (t) { t.interval = parseInt(document.getElementById('intervalInput').value) || 0; save(); render(); }
+      closeIntervalModal();
+    }
+
+    function isDue(task) {
+      if (!task.interval || !task.checked || !task.checkedAt) return false;
+      return Date.now() - task.checkedAt >= task.interval * 60 * 1000;
+    }
+
+    function renderSection(section) {
+      const list = document.getElementById('list-' + section);
+      const sectionTasks = tasks.filter(t => t.section === section);
+      const done = sectionTasks.filter(t => t.checked).length;
+      document.getElementById('prog-' + section).textContent = `${done}/${sectionTasks.length}`;
+
+      list.innerHTML = '';
+      sectionTasks.forEach(t => {
+        const due = isDue(t);
+        const div = document.createElement('div');
+        div.className = 'task-item' + (t.checked ? ' checked' : '');
+        div.innerHTML = `
+          <input type="checkbox" ${t.checked ? 'checked' : ''} onchange="toggle('${t.id}')">
+          <input class="task-label" type="text" value="${escHtml(t.label)}"
+            onchange="rename('${t.id}', this.value)"
+            onblur="rename('${t.id}', this.value)">
+          ${section === 'mid' ? `<span class="interval-badge ${due ? 'due' : ''}" onclick="openIntervalModal('${t.id}')" title="Set reminder interval">
+            ${t.interval ? `⏱ ${t.interval}m${due ? ' DUE' : ''}` : '+ timer'}
+          </span>` : ''}
+          <button class="task-del" onclick="deleteTask('${t.id}')" title="Remove">×</button>
+        `;
+        list.appendChild(div);
+      });
+    }
+
+    function render() {
+      renderSection('pre');
+      renderSection('mid');
+      renderSection('post');
+    }
+
+    // tick every 10s to refresh "due" states
+    setInterval(() => render(), 10000);
+
+    load();
+  </script>
+</body>
+</html>
