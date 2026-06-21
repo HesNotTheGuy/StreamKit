@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Wheel Overlay — StreamKit</title>
+  <link rel="stylesheet" href="../../../assets/styles/overlay.css">
+  <script src="../../../assets/js/util.js"></script>
+  <style>
+    body { background: transparent; display: flex; align-items: center; justify-content: center; min-height: 100vh; overflow: hidden; }
+    .stage { position: relative; width: 380px; height: 380px; }
+    .ov-pointer {
+      position: absolute; top: -2px; left: 50%; transform: translateX(-50%);
+      width: 0; height: 0;
+      border-left: 16px solid transparent;
+      border-right: 16px solid transparent;
+      border-top: 26px solid #fff;
+      z-index: 3;
+      filter: drop-shadow(0 2px 5px rgba(0,0,0,0.8));
+    }
+    .ov-svg {
+      width: 380px; height: 380px; transform: rotate(0deg);
+      filter: drop-shadow(0 6px 22px rgba(0,0,0,0.6));
+    }
+    .ov-hub {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+      width: 56px; height: 56px; border-radius: 50%;
+      background: #15151c; border: 3px solid rgba(255,255,255,0.85);
+      z-index: 2; box-shadow: 0 0 14px rgba(0,0,0,0.6);
+    }
+    .ov-winner {
+      position: absolute; left: 50%; bottom: -8px; transform: translate(-50%, 100%);
+      opacity: 0; transition: opacity 0.4s, transform 0.4s;
+      background: rgba(10,10,16,0.82);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 14px; padding: 12px 26px; text-align: center;
+      backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+      white-space: nowrap;
+    }
+    .ov-winner.show { opacity: 1; transform: translate(-50%, 0); }
+    .ov-winner-label { font-size: 12px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; color: rgba(255,255,255,0.6); }
+    .ov-winner-name {
+      font-family: 'Bebas Neue', sans-serif; font-size: 40px; line-height: 1.05; color: #fff;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.9);
+    }
+  </style>
+</head>
+<body>
+  <div class="stage">
+    <div class="ov-pointer"></div>
+    <svg class="ov-svg" id="ovSvg" viewBox="0 0 300 300"></svg>
+    <div class="ov-hub"></div>
+    <div class="ov-winner" id="ovWinner">
+      <div class="ov-winner-label">Winner</div>
+      <div class="ov-winner-name" id="ovWinnerName">—</div>
+    </div>
+  </div>
+
+  <script>
+    const SVGNS    = 'http://www.w3.org/2000/svg';
+    const KEY      = 'streamkit_wheel';
+    const SPIN_KEY = 'streamkit_wheel_spin';
+    const CX = 150, CY = 150, R = 142;
+
+    let entries = [];
+    let lastEntriesRaw = '';
+    let lastSpinTs = 0;
+    let spinningUntil = 0;
+
+    function sliceColor(i) {
+      const hue = (i * 137.508) % 360;
+      return `hsl(${hue.toFixed(1)} 62% 55%)`;
+    }
+    function polar(r, deg) {
+      const a = (deg - 90) * Math.PI / 180;
+      return [CX + r * Math.cos(a), CY + r * Math.sin(a)];
+    }
+    function slicePath(start, end) {
+      const [x1, y1] = polar(R, start);
+      const [x2, y2] = polar(R, end);
+      const large = (end - start) > 180 ? 1 : 0;
+      return `M${CX},${CY} L${x1.toFixed(2)},${y1.toFixed(2)} A${R},${R} 0 ${large} 1 ${x2.toFixed(2)},${y2.toFixed(2)} Z`;
+    }
+    function svgNode(tag, attrs) {
+      const n = document.createElementNS(SVGNS, tag);
+      for (const k in attrs) n.setAttribute(k, attrs[k]);
+      return n;
+    }
+    function fontFor(n) { return n <= 8 ? 15 : n <= 14 ? 13 : n <= 24 ? 11 : 0; }
+
+    function buildWheel() {
+      const svg = document.getElementById('ovSvg');
+      svg.replaceChildren();
+      const n = entries.length;
+      if (n === 0) return;
+      const seg = 360 / n;
+      const fs = fontFor(n);
+      entries.forEach((e, i) => {
+        const start = i * seg, end = (i + 1) * seg, mid = start + seg / 2;
+        svg.appendChild(svgNode('path', {
+          d: slicePath(start, end), fill: sliceColor(i),
+          stroke: 'rgba(0,0,0,0.3)', 'stroke-width': '1',
+        }));
+        if (fs > 0) {
+          const ly = (CY - R * 0.60).toFixed(1);
+          const flip = (mid > 90 && mid < 270) ? 180 : 0;
+          const g = svgNode('g', { transform: `rotate(${mid.toFixed(1)} ${CX} ${CY})` });
+          const t = svgNode('text', {
+            x: CX, y: ly, 'text-anchor': 'middle', 'dominant-baseline': 'middle',
+            transform: `rotate(${flip} ${CX} ${ly})`,
+            'font-size': fs, 'font-weight': '700', fill: '#fff',
+            style: 'paint-order:stroke;stroke:rgba(0,0,0,0.45);stroke-width:2px',
+          });
+          t.textContent = e.name.length > 14 ? e.name.slice(0, 13) + '…' : e.name;
+          g.appendChild(t);
+          svg.appendChild(g);
+        }
+      });
+      svg.appendChild(svgNode('circle', {
+        cx: CX, cy: CY, r: R, fill: 'none', stroke: 'rgba(255,255,255,0.2)', 'stroke-width': '2',
+      }));
+    }
+
+    function poll() {
+      // entries — rebuild only when changed and not mid-spin
+      const raw = localStorage.getItem(KEY) || '';
+      if (raw !== lastEntriesRaw && Date.now() > spinningUntil) {
+        lastEntriesRaw = raw;
+        try { const s = JSON.parse(raw); entries = Array.isArray(s && s.entries) ? s.entries : []; }
+        catch (e) { entries = []; }
+        buildWheel();
+      }
+
+      // spin signal
+      let spin = null;
+      try { spin = JSON.parse(localStorage.getItem(SPIN_KEY)); } catch (e) {}
+      if (spin && spin.ts && spin.ts !== lastSpinTs) {
+        lastSpinTs = spin.ts;
+        document.getElementById('ovWinner').classList.remove('show');
+        const svg = document.getElementById('ovSvg');
+        svg.style.transition = `transform ${spin.duration}ms cubic-bezier(0.15, 0.85, 0.2, 1)`;
+        void svg.offsetWidth;
+        svg.style.transform = `rotate(${spin.rotation}deg)`;
+        spinningUntil = Date.now() + spin.duration + 100;
+        clearTimeout(window.__ovTimer);
+        window.__ovTimer = setTimeout(() => {
+          document.getElementById('ovWinnerName').textContent = spin.winner || '—';
+          document.getElementById('ovWinner').classList.add('show');
+        }, spin.duration + 120);
+      }
+    }
+
+    poll();
+    setInterval(poll, 500);
+  </script>
+</body>
+</html>
