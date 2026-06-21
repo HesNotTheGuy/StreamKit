@@ -154,6 +154,28 @@
       } catch(e) { config = null; }
     }
 
+    // ── Session stat tallies (consumed by Goal Tracker auto-goals + labels) ──
+    const STATS_KEY = 'streamkit_live_stats';
+    function bumpStat(eventKey, vars) {
+      let s;
+      try { s = JSON.parse(localStorage.getItem(STATS_KEY)) || {}; } catch(e) { s = {}; }
+      s.sessionFollows = s.sessionFollows || 0;
+      s.sessionSubs    = s.sessionSubs    || 0;
+      s.sessionBits    = s.sessionBits    || 0;
+      s.sessionRaids   = s.sessionRaids   || 0;
+      if (!s.sessionStartedAt) s.sessionStartedAt = Date.now();
+      switch (eventKey) {
+        case 'follow':    s.sessionFollows++; s.latestFollower = vars.user || '';                 break;
+        case 'subscribe': s.sessionSubs++;    s.latestSub = vars.user || '';                      break;
+        case 'resub':     s.sessionSubs++;    s.latestSub = vars.user || '';                      break;
+        case 'gift_sub':  s.sessionSubs++;    s.latestSub = vars.recipient || vars.user || '';    break;
+        case 'cheer':     s.sessionBits += (parseInt(vars.amount) || 0); s.latestCheer = vars.user || ''; break;
+        case 'raid':      s.sessionRaids++;   s.latestRaid = vars.user || '';                     break;
+      }
+      s.updatedAt = Date.now();
+      localStorage.setItem(STATS_KEY, JSON.stringify(s));
+    }
+
     // ── Alert queue ──────────────────────────────────────────────────────────
     function enqueue(eventKey, vars) {
       if (!config || !config.events) return;
@@ -399,7 +421,7 @@
           const event   = msg.payload.event;
           if (!subType || !event) return;
           const mapped = eventToVars(subType, event);
-          if (mapped) enqueue(mapped.eventKey, mapped.vars);
+          if (mapped) { bumpStat(mapped.eventKey, mapped.vars); enqueue(mapped.eventKey, mapped.vars); }
         } else if (msgType === 'session_keepalive') {
           // ignore
         } else if (msgType === 'session_reconnect') {
@@ -450,7 +472,7 @@
           const event   = msg.payload.event;
           if (!subType || !event) return;
           const mapped = eventToVars(subType, event);
-          if (mapped) enqueue(mapped.eventKey, mapped.vars);
+          if (mapped) { bumpStat(mapped.eventKey, mapped.vars); enqueue(mapped.eventKey, mapped.vars); }
         }
       });
       ws.addEventListener('close', () => {
@@ -485,6 +507,7 @@
         recipient: payload.recipient || 'AnotherUser',
         message: payload.message || 'Love the stream!',
       };
+      bumpStat(key, vars);
       enqueue(key, vars);
     }
 

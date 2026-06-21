@@ -9,6 +9,7 @@
   <style>
     body { padding: 20px; }
     .tool-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+    .tool-header .header-actions { display: flex; gap: 8px; }
 
     .goals-list { display: flex; flex-direction: column; gap: 16px; }
 
@@ -63,6 +64,18 @@
     .goal-controls .target-row { display: flex; gap: 6px; align-items: center; }
     .goal-controls .target-row input { width: 80px; text-align: center; }
 
+    .live-tag {
+      display: inline-flex; align-items: center; gap: 5px;
+      font-size: 12px; font-weight: 800; letter-spacing: 0.4px;
+      color: var(--green);
+      padding: 4px 8px; border-radius: 8px;
+      background: rgba(46,204,113,0.12); border: 1px solid rgba(46,204,113,0.3);
+    }
+    .live-tag::before {
+      content: ''; width: 7px; height: 7px; border-radius: 50%;
+      background: var(--green); animation: pulse-green 1.6s infinite;
+    }
+
     .complete-banner {
       display: none;
       text-align: center;
@@ -83,12 +96,20 @@
       padding: 40px 20px;
       color: var(--muted);
     }
+    .live-note {
+      font-size: 12px; color: var(--muted); margin-top: 14px; line-height: 1.5;
+      padding: 10px 12px; background: var(--bg2); border: 1px solid var(--border); border-radius: 8px;
+    }
+    .live-note strong { color: var(--text); }
   </style>
 </head>
 <body>
   <div class="tool-header">
     <h1>Goal Tracker</h1>
-    <button class="btn btn-primary" onclick="addGoal()">+ New Goal</button>
+    <div class="header-actions">
+      <button class="btn btn-ghost btn-sm" onclick="resetSession()" title="Zero the live session counters">↻ Reset session</button>
+      <button class="btn btn-primary" onclick="addGoal()">+ New Goal</button>
+    </div>
   </div>
 
   <div class="goals-list" id="goalsList">
@@ -97,113 +118,157 @@
     </div>
   </div>
 
+  <div class="live-note">
+    <strong>Live goals</strong> (Followers / Subs / Bits / Raids) auto-fill from Twitch events while the
+    <strong>Alerts</strong> overlay is running in OBS. Counts are per-session — use <strong>Reset session</strong> at the start of each stream.
+  </div>
+
   <script>
     const KEY = 'streamkit_goals';
+    const STATS_KEY = 'streamkit_live_stats';
     let goals = [];
 
+    const SRC_FIELD = { follows: 'sessionFollows', subs: 'sessionSubs', bits: 'sessionBits', raids: 'sessionRaids' };
+    const SRC_OPTS = [
+      ['manual',  'Manual'],
+      ['follows', 'Followers (session)'],
+      ['subs',    'Subs (session)'],
+      ['bits',    'Bits (session)'],
+      ['raids',   'Raids (session)'],
+    ];
+
+    function liveStats() { try { return JSON.parse(localStorage.getItem(STATS_KEY)) || {}; } catch (e) { return {}; } }
+    function currentOf(g) {
+      if (g.source && g.source !== 'manual') {
+        return Math.max(0, parseInt(liveStats()[SRC_FIELD[g.source]]) || 0);
+      }
+      return Math.max(0, parseInt(g.current) || 0);
+    }
+
     function load() {
-      try { const s = localStorage.getItem(KEY); goals = s ? JSON.parse(s) : []; } catch(e) { goals = []; }
+      try { const s = localStorage.getItem(KEY); goals = s ? JSON.parse(s) : []; } catch (e) { goals = []; }
+      goals.forEach(g => { if (!g.source) g.source = 'manual'; });
       render();
     }
     function save() { localStorage.setItem(KEY, JSON.stringify(goals)); }
 
     function addGoal() {
-      goals.push({ id: uid(), label: 'New Goal', current: 0, target: 100 });
-      save();
+      goals.push({ id: uid(), label: 'New Goal', current: 0, target: 100, source: 'manual' });
+      save(); render();
+    }
+    function deleteGoal(id) { goals = goals.filter(g => g.id !== id); save(); render(); }
+    function updateLabel(id, val) { const g = goals.find(g => g.id === id); if (g) { g.label = val; save(); } }
+    function setSource(id, val) { const g = goals.find(g => g.id === id); if (g) { g.source = val; save(); render(); } }
+    function increment(id, delta) { const g = goals.find(g => g.id === id); if (!g) return; g.current = Math.max(0, (parseInt(g.current) || 0) + delta); save(); render(); }
+    function setCurrent(id, val) { const g = goals.find(g => g.id === id); if (!g) return; g.current = Math.max(0, parseInt(val) || 0); save(); render(); }
+    function setTarget(id, val) { const g = goals.find(g => g.id === id); if (!g) return; g.target = Math.max(1, parseInt(val) || 1); if (g.current > g.target) g.current = g.target; save(); render(); }
+
+    function resetSession() {
+      if (!confirm('Reset session counts (followers, subs, bits, raids) to zero?')) return;
+      localStorage.setItem(STATS_KEY, JSON.stringify({
+        sessionFollows: 0, sessionSubs: 0, sessionBits: 0, sessionRaids: 0,
+        latestFollower: '', latestSub: '', latestCheer: '', latestRaid: '',
+        sessionStartedAt: Date.now(), updatedAt: Date.now(),
+      }));
       render();
     }
 
-    function deleteGoal(id) {
-      goals = goals.filter(g => g.id !== id);
-      save();
-      render();
+    // ── DOM builder ──
+    function mk(tag, attrs, kids) {
+      const n = document.createElement(tag);
+      if (attrs) for (const k in attrs) {
+        if (k === 'class') n.className = attrs[k];
+        else if (k === 'text') n.textContent = attrs[k];
+        else if (k === 'style') n.style.cssText = attrs[k];
+        else if (k === 'value') n.value = attrs[k];
+        else if (k.slice(0, 2) === 'on') n.addEventListener(k.slice(2), attrs[k]);
+        else n.setAttribute(k, attrs[k]);
+      }
+      (kids || []).forEach(c => { if (c) n.appendChild(c); });
+      return n;
     }
 
-    function updateLabel(id, val) {
-      const g = goals.find(g => g.id === id);
-      if (g) { g.label = val; save(); }
-    }
+    function buildCard(g) {
+      const cur = currentOf(g);
+      const pct = g.target > 0 ? Math.min(100, Math.round((cur / g.target) * 100)) : 0;
+      const complete = cur >= g.target;
+      const auto = g.source && g.source !== 'manual';
 
-    function increment(id, delta) {
-      const g = goals.find(g => g.id === id);
-      if (!g) return;
-      g.current = Math.max(0, g.current + delta);
-      save();
-      render();
-    }
+      const card = mk('div', { class: 'card goal-card' + (complete ? ' complete' : '') });
 
-    function setCurrent(id, val) {
-      const g = goals.find(g => g.id === id);
-      if (!g) return;
-      g.current = Math.max(0, parseInt(val) || 0);
-      save();
-      render();
-    }
-
-    function setTarget(id, val) {
-      const g = goals.find(g => g.id === id);
-      if (!g) return;
-      g.target = Math.max(1, parseInt(val) || 1);
-      if (g.current > g.target) g.current = g.target;
-      save();
-      render();
-    }
-
-    function render() {
-      const list = document.getElementById('goalsList');
-      document.getElementById('emptyState').style.display = goals.length ? 'none' : 'block';
-
-      // remove existing goal cards
-      list.querySelectorAll('.goal-card').forEach(el => el.remove());
-
-      goals.forEach(g => {
-        const pct = g.target > 0 ? Math.min(100, Math.round((g.current / g.target) * 100)) : 0;
-        const complete = g.current >= g.target;
-
-        const card = document.createElement('div');
-        card.className = 'card goal-card' + (complete ? ' complete' : '');
-        card.innerHTML = `
-          <div class="goal-top">
-            <input class="goal-label-input" type="text" value="${esc(g.label)}"
-              onchange="updateLabel('${g.id}', this.value)"
-              onblur="updateLabel('${g.id}', this.value)">
-            <button class="goal-del" onclick="deleteGoal('${g.id}')" title="Delete">×</button>
-          </div>
-
-          <div class="goal-progress-row">
-            <div class="progress-track">
-              <div class="progress-fill ${complete ? 'complete' : ''}" style="width:${pct}%"></div>
-            </div>
-            <div class="goal-numbers">
-              <span><span class="goal-current-val">${g.current}</span> <span class="goal-target-val">/ ${g.target}</span></span>
-              <span class="goal-pct">${pct}%</span>
-            </div>
-          </div>
-
-          <div class="goal-controls">
-            <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-              <button class="btn btn-ghost btn-sm" onclick="increment('${g.id}',-1)">−</button>
-              <button class="btn btn-primary" onclick="increment('${g.id}',1)">+1</button>
-              <div class="set-row">
-                <span style="color:var(--muted);font-size:13px;white-space:nowrap">Set current:</span>
-                <input type="number" min="0" value="${g.current}" style="width:80px;text-align:center"
-                  onchange="setCurrent('${g.id}', this.value)"
-                  onblur="setCurrent('${g.id}', this.value)">
-              </div>
-              <div class="target-row">
-                <span style="color:var(--muted);font-size:13px;white-space:nowrap">Target:</span>
-                <input type="number" min="1" value="${g.target}" style="width:80px;text-align:center"
-                  onchange="setTarget('${g.id}', this.value)"
-                  onblur="setTarget('${g.id}', this.value)">
-              </div>
-            </div>
-          </div>
-
-          ${complete ? '<div class="complete-banner">🎉 Goal Reached!</div>' : ''}
-        `;
-        list.appendChild(card);
+      const labelInput = mk('input', {
+        class: 'goal-label-input', type: 'text', value: g.label,
+        onchange: e => updateLabel(g.id, e.target.value),
+        onblur: e => updateLabel(g.id, e.target.value),
       });
+      const del = mk('button', { class: 'goal-del', title: 'Delete', text: '×', onclick: () => deleteGoal(g.id) });
+      card.appendChild(mk('div', { class: 'goal-top' }, [labelInput, del]));
+
+      const fill = mk('div', { class: 'progress-fill' + (complete ? ' complete' : ''), style: `width:${pct}%` });
+      const track = mk('div', { class: 'progress-track' }, [fill]);
+      const curWrap = mk('span', null, [
+        mk('span', { class: 'goal-current-val', text: String(cur) }),
+        mk('span', { class: 'goal-target-val', text: ` / ${g.target}` }),
+      ]);
+      const nums = mk('div', { class: 'goal-numbers' }, [curWrap, mk('span', { class: 'goal-pct', text: pct + '%' })]);
+      card.appendChild(mk('div', { class: 'goal-progress-row' }, [track, nums]));
+
+      const ctlInner = mk('div', { style: 'display:flex;gap:6px;align-items:center;flex-wrap:wrap' });
+
+      const sel = mk('select', { style: 'width:auto;font-size:13px;padding:6px 8px', onchange: e => setSource(g.id, e.target.value) });
+      SRC_OPTS.forEach(([v, lbl]) => {
+        const o = mk('option', { value: v, text: lbl });
+        if (g.source === v) o.selected = true;
+        sel.appendChild(o);
+      });
+      ctlInner.appendChild(sel);
+
+      if (auto) {
+        ctlInner.appendChild(mk('span', { class: 'live-tag', text: 'LIVE' }));
+      } else {
+        ctlInner.appendChild(mk('button', { class: 'btn btn-ghost btn-sm', text: '−', onclick: () => increment(g.id, -1) }));
+        ctlInner.appendChild(mk('button', { class: 'btn btn-primary', text: '+1', onclick: () => increment(g.id, 1) }));
+        ctlInner.appendChild(mk('div', { class: 'set-row' }, [
+          mk('span', { style: 'color:var(--muted);font-size:13px;white-space:nowrap', text: 'Set current:' }),
+          mk('input', {
+            type: 'number', min: '0', value: String(g.current), style: 'width:80px;text-align:center',
+            onchange: e => setCurrent(g.id, e.target.value), onblur: e => setCurrent(g.id, e.target.value),
+          }),
+        ]));
+      }
+
+      ctlInner.appendChild(mk('div', { class: 'target-row' }, [
+        mk('span', { style: 'color:var(--muted);font-size:13px;white-space:nowrap', text: 'Target:' }),
+        mk('input', {
+          type: 'number', min: '1', value: String(g.target), style: 'width:80px;text-align:center',
+          onchange: e => setTarget(g.id, e.target.value), onblur: e => setTarget(g.id, e.target.value),
+        }),
+      ]));
+
+      card.appendChild(mk('div', { class: 'goal-controls' }, [ctlInner]));
+      if (complete) card.appendChild(mk('div', { class: 'complete-banner', text: '🎉 Goal Reached!' }));
+      return card;
     }
+
+    let lastAutoSig = '';
+    function autoSig() {
+      return goals.filter(g => g.source && g.source !== 'manual').map(g => g.id + ':' + currentOf(g)).join('|');
+    }
+    function render() {
+      document.getElementById('emptyState').style.display = goals.length ? 'none' : 'block';
+      const list = document.getElementById('goalsList');
+      list.querySelectorAll('.goal-card').forEach(el => el.remove());
+      goals.forEach(g => list.appendChild(buildCard(g)));
+      lastAutoSig = autoSig();
+    }
+
+    // Refresh auto-sourced goals from live stats without disrupting manual editing
+    function tick() {
+      if (autoSig() === lastAutoSig) return;
+      if (document.activeElement && document.activeElement.tagName === 'INPUT') return;
+      render();
+    }
+    setInterval(tick, 2000);
 
     load();
   </script>

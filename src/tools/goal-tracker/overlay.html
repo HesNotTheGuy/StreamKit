@@ -32,8 +32,9 @@
     }
     .goal-bar-fill {
       height: 100%; border-radius: 6px;
-      transition: width 0.5s ease;
+      transition: width 0.5s ease, background 0.3s ease;
     }
+    .goal-bar-fill.done { box-shadow: 0 0 10px currentColor; }
     .goal-pct {
       font-size: 12px; color: rgba(255,255,255,0.7);
       text-shadow: 1px 1px 3px rgba(0,0,0,0.9);
@@ -47,44 +48,58 @@
   <script>
     const KEY       = 'streamkit_goals';
     const STYLE_KEY = 'streamkit_overlay_goals';
+    const STATS_KEY = 'streamkit_live_stats';
 
     const DEFAULTS  = { font: 'system', colorBar: '#7c6af7', colorComplete: '#2ecc71' };
+    const SRC_FIELD = { follows: 'sessionFollows', subs: 'sessionSubs', bits: 'sessionBits', raids: 'sessionRaids' };
 
     function getStyle() {
       try { return { ...DEFAULTS, ...JSON.parse(localStorage.getItem(STYLE_KEY)) }; }
-      catch(e) { return { ...DEFAULTS }; }
+      catch (e) { return { ...DEFAULTS }; }
+    }
+    function liveStats() { try { return JSON.parse(localStorage.getItem(STATS_KEY)) || {}; } catch (e) { return {}; } }
+    function currentOf(g, ls) {
+      if (g.source && g.source !== 'manual') return Math.max(0, parseInt(ls[SRC_FIELD[g.source]]) || 0);
+      return Math.max(0, parseInt(g.current) || 0);
+    }
+
+    function mk(tag, attrs, kids) {
+      const n = document.createElement(tag);
+      if (attrs) for (const k in attrs) {
+        if (k === 'class') n.className = attrs[k];
+        else if (k === 'text') n.textContent = attrs[k];
+        else if (k === 'style') n.style.cssText = attrs[k];
+        else n.setAttribute(k, attrs[k]);
+      }
+      (kids || []).forEach(c => { if (c) n.appendChild(c); });
+      return n;
     }
 
     function update() {
-      const s       = getStyle();
-      const fontCss = StreamKit.FONT_CSS[s.font] || StreamKit.FONT_CSS.system;
-      document.body.style.fontFamily = fontCss;
+      const s = getStyle();
+      document.body.style.fontFamily = StreamKit.FONT_CSS[s.font] || StreamKit.FONT_CSS.system;
 
-      const raw   = localStorage.getItem(KEY);
+      let goals = [];
+      try { goals = JSON.parse(localStorage.getItem(KEY)) || []; } catch (e) { goals = []; }
+      const ls = liveStats();
+
       const stack = document.getElementById('stack');
-      if (!raw) { stack.innerHTML = ''; return; }
-      let goals;
-      try { goals = JSON.parse(raw); } catch(e) { return; }
+      stack.replaceChildren();
 
-      stack.innerHTML = '';
       goals.forEach(g => {
-        const pct      = g.target > 0 ? Math.min(100, Math.round((g.current / g.target) * 100)) : 0;
-        const complete = g.current >= g.target;
+        const cur = currentOf(g, ls);
+        const pct = g.target > 0 ? Math.min(100, Math.round((cur / g.target) * 100)) : 0;
+        const complete = cur >= g.target;
         const barColor = complete ? s.colorComplete : s.colorBar;
 
-        const block = document.createElement('div');
-        block.className = 'goal-block';
-        block.innerHTML = `
-          <div class="goal-header-row">
-            <span class="goal-name">${esc(g.label)}</span>
-            <span class="goal-nums">${g.current} / ${g.target}</span>
-          </div>
-          <div class="goal-bar-track">
-            <div class="goal-bar-fill" style="width:${pct}%;background:${barColor}${complete ? ';animation:celebrate 0.5s ease' : ''}"></div>
-          </div>
-          <div class="goal-pct">${pct}%${complete ? ' 🎉' : ''}</div>
-        `;
-        stack.appendChild(block);
+        const fill = mk('div', { class: 'goal-bar-fill' + (complete ? ' done' : ''), style: `width:${pct}%;background:${barColor};color:${barColor}` });
+        const track = mk('div', { class: 'goal-bar-track' }, [fill]);
+        const header = mk('div', { class: 'goal-header-row' }, [
+          mk('span', { class: 'goal-name', text: g.label }),
+          mk('span', { class: 'goal-nums', text: `${cur} / ${g.target}` }),
+        ]);
+        const pctEl = mk('div', { class: 'goal-pct', text: pct + '%' + (complete ? ' 🎉' : '') });
+        stack.appendChild(mk('div', { class: 'goal-block' }, [header, track, pctEl]));
       });
     }
 
