@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Remote Control — StreamKit</title>
+  <link rel="stylesheet" href="../../../assets/styles/dashboard.css">
+  <script src="../../../assets/js/util.js"></script>
+  <style>
+    body { padding: 24px; max-width: 640px; }
+    .tool-header { margin-bottom: 8px; }
+    .lead { color: var(--muted); font-size: 14px; line-height: 1.6; margin-bottom: 20px; }
+
+    .status {
+      display: flex; align-items: center; gap: 10px;
+      padding: 12px 14px; border-radius: 10px; margin-bottom: 22px;
+      font-size: 14px; font-weight: 600;
+    }
+    .status .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .status.on  { background: rgba(46,204,113,0.1);  border: 1px solid rgba(46,204,113,0.3); color: var(--green); }
+    .status.on .dot  { background: var(--green); box-shadow: 0 0 8px var(--green); }
+    .status.off { background: rgba(240,165,0,0.1);  border: 1px solid rgba(240,165,0,0.3); color: var(--yellow); }
+    .status.off .dot { background: var(--yellow); }
+
+    h2 { font-size: 15px; margin: 24px 0 12px; }
+
+    .url-row {
+      display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
+    }
+    .url-label { width: 150px; flex-shrink: 0; font-size: 13px; font-weight: 600; color: var(--text); }
+    .url-input {
+      flex: 1; font-family: 'Consolas', monospace; font-size: 12px;
+      color: var(--accent); background: var(--bg3);
+      border: 1px solid var(--border); border-radius: 6px; padding: 7px 9px; outline: none;
+    }
+    .url-input:focus { border-color: var(--accent); }
+    .copy-btn {
+      flex-shrink: 0; padding: 7px 12px; font-size: 12px; font-weight: 600;
+      background: var(--bg3); border: 1px solid var(--border); border-radius: 6px;
+      color: var(--text); cursor: pointer; font-family: inherit;
+    }
+    .copy-btn:hover { background: var(--bg2); border-color: var(--accent); }
+    .copy-btn.copied { color: var(--green); border-color: var(--green); }
+
+    .steps { counter-reset: s; display: flex; flex-direction: column; gap: 12px; }
+    .step { display: flex; gap: 12px; align-items: flex-start; }
+    .step::before {
+      counter-increment: s; content: counter(s);
+      width: 24px; height: 24px; flex-shrink: 0; border-radius: 50%;
+      background: var(--accent); color: #fff; font-size: 12px; font-weight: 800;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .step div { font-size: 14px; color: var(--text); line-height: 1.55; }
+    .step code { background: var(--bg3); color: var(--accent); padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+    .muted { color: var(--muted); }
+
+    .note {
+      margin-top: 24px; font-size: 13px; color: var(--muted); line-height: 1.6;
+      padding: 12px 14px; background: var(--bg2); border: 1px solid var(--border); border-radius: 8px;
+    }
+    .note strong { color: var(--text); }
+    .pattern { font-family: 'Consolas', monospace; font-size: 12px; color: var(--accent); }
+  </style>
+</head>
+<body>
+  <div class="tool-header"><h1>Remote Control</h1></div>
+  <div class="lead">
+    Trigger StreamKit from a physical controller — a Stream Deck, Touch Portal, a Loupedeck, or a phone —
+    by pointing a button at a local URL. No plugin to install in StreamKit; any controller that can send an
+    HTTP request to your own machine works.
+  </div>
+
+  <div class="status off" id="status">
+    <span class="dot"></span>
+    <span id="statusText">Checking for the control server…</span>
+  </div>
+
+  <div id="liveSection" style="display:none">
+    <h2>Your control URLs</h2>
+    <div id="urlList"></div>
+
+    <h2>Connect a Stream Deck</h2>
+    <div class="steps">
+      <div class="step"><div>In the Stream Deck app, add a <strong>Website</strong> action to a button (or install the free <strong>"Web Requests" / "API Ninja"</strong> plugin for a silent request with no browser pop).</div></div>
+      <div class="step"><div>Paste one of the URLs above as the target, set the method to <code>GET</code>, and (for the Website action) enable <em>"Access in background"</em> so it doesn't open a tab.</div></div>
+      <div class="step"><div>Press the button — StreamKit reacts instantly. Repeat for each action you want on a key.</div></div>
+    </div>
+
+    <h2>Other controllers</h2>
+    <div class="muted" style="font-size:14px;line-height:1.6">
+      <strong style="color:var(--text)">Touch Portal / Loupedeck:</strong> add a "send HTTP GET" / web-request action with the URL.<br>
+      <strong style="color:var(--text)">Phone or browser:</strong> bookmark the URL.<br>
+      <strong style="color:var(--text)">Open any tool:</strong> use the pattern <span class="pattern">/api/action/tool:&lt;id&gt;?token=…</span> — e.g. <span class="pattern">tool:soundboard</span>, <span class="pattern">tool:spotify</span>, <span class="pattern">tool:alerts</span>.
+    </div>
+
+    <div class="note">
+      <strong>Security:</strong> the control server listens only on <code>localhost</code> (this machine), and every URL carries a
+      private token so other apps can't trigger actions blindly. The token persists across restarts, so your saved
+      buttons keep working. Keep these URLs to yourself — anyone you share them with could press your buttons if they're on your PC.
+    </div>
+  </div>
+
+  <div id="offSection" style="display:none">
+    <div class="note">
+      Remote control runs inside the installed <strong>StreamKit desktop app</strong> — it isn't available in browser-only
+      dev mode (<code>serve.py</code>), because the control server is part of the desktop build. Launch the StreamKit app
+      and reopen this page to see your controller URLs.
+    </div>
+  </div>
+
+  <script>
+    const ACTIONS = [
+      { action: 'toggle_window', label: 'Show / hide window' },
+      { action: 'show_window',   label: 'Show window' },
+      { action: 'hide_window',   label: 'Hide window' },
+      { action: 'wheel_spin',    label: 'Spin the Wheel' },
+      { action: 'tool:soundboard', label: 'Open Soundboard' },
+      { action: 'tool:wheel',      label: 'Open Wheel' },
+    ];
+
+    function mk(tag, attrs, kids) {
+      const n = document.createElement(tag);
+      if (attrs) for (const k in attrs) {
+        if (k === 'class') n.className = attrs[k];
+        else if (k === 'text') n.textContent = attrs[k];
+        else if (k === 'value') n.value = attrs[k];
+        else if (k.slice(0, 2) === 'on') n.addEventListener(k.slice(2), attrs[k]);
+        else n.setAttribute(k, attrs[k]);
+      }
+      (kids || []).forEach(c => { if (c) n.appendChild(c); });
+      return n;
+    }
+
+    function buildUrls(token) {
+      const base = window.location.origin;
+      const list = document.getElementById('urlList');
+      list.replaceChildren();
+      ACTIONS.forEach(a => {
+        const url = `${base}/api/action/${a.action}?token=${token}`;
+        const input = mk('input', { class: 'url-input', type: 'text', value: url, readonly: 'readonly' });
+        input.addEventListener('focus', () => input.select());
+        const btn = mk('button', { class: 'copy-btn', text: 'Copy' });
+        btn.addEventListener('click', () => {
+          navigator.clipboard.writeText(url).then(() => {
+            btn.textContent = '✓'; btn.classList.add('copied');
+            setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+          });
+        });
+        list.appendChild(mk('div', { class: 'url-row' }, [
+          mk('span', { class: 'url-label', text: a.label }), input, btn,
+        ]));
+      });
+    }
+
+    function showOn(token) {
+      const s = document.getElementById('status');
+      s.className = 'status on';
+      document.getElementById('statusText').textContent = 'Control server is running — your controller can connect.';
+      document.getElementById('liveSection').style.display = 'block';
+      document.getElementById('offSection').style.display = 'none';
+      buildUrls(token);
+    }
+    function showOff() {
+      const s = document.getElementById('status');
+      s.className = 'status off';
+      document.getElementById('statusText').textContent = 'Control server not detected (browser-only dev mode).';
+      document.getElementById('liveSection').style.display = 'none';
+      document.getElementById('offSection').style.display = 'block';
+    }
+
+    (async () => {
+      try {
+        const r = await fetch('/api/token');
+        if (!r.ok) return showOff();
+        const d = await r.json();
+        if (d && d.token) showOn(d.token); else showOff();
+      } catch (e) { showOff(); }
+    })();
+  </script>
+</body>
+</html>

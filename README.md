@@ -16,10 +16,11 @@ Most stream tools charge you (or sell your data) because *they* are paying the A
 |---|---|
 | **W/L Tracker** | Wins/losses/draws counter with streaks, win-rate, custom-font overlay |
 | **Timers** | Countdown / count-up / interval timers with OBS overlay |
-| **Goal Tracker** | Multi-goal progress bars (subs, follows, donations, etc.) + overlay |
+| **Goal Tracker** | Multi-goal progress bars + overlay; goals can auto-fill from live Followers / Subs / Bits / Raids |
 | **Soundboard** | Audio clips with keyboard shortcuts, per-slot volume, drag-in `.mp3`/`.wav` |
 | **Spotify** | Now Playing overlay + Twitch chat `!sr` song requests with auto-queue |
 | **Alerts** | Twitch EventSub alerts (sub / resub / gift / raid / cheer / follow) with custom text, image, audio |
+| **Wheel** | Spin a wheel of anything — giveaways, "what game next", viewer picks — with a synced OBS overlay |
 | **Chat Wall** | Pin viewer messages; cycle or scroll them on an overlay |
 | **Stream Info** | Edit your stream title, category, and tags from the dashboard |
 | **Raid Log** | Auto-logs incoming raids via Twitch IRC |
@@ -29,6 +30,7 @@ Most stream tools charge you (or sell your data) because *they* are paying the A
 | **Clip Notes** | Stamp clip-worthy moments while you stream |
 | **Scratchpad** | Persistent autosaving notepad with heading jump |
 | **Setup** | Onboarding + Twitch/Spotify configuration guide |
+| **Remote Control** | Trigger StreamKit from a Stream Deck / Touch Portal / phone via local control URLs |
 
 Every overlay tool has a "📋 Copy OBS Browser Source URL" button in its style panel — paste it into OBS as a Browser Source and you're done.
 
@@ -76,6 +78,16 @@ Both integrations are **bring-your-own-key**: you create your own free developer
 5. Open the **Spotify** tool in StreamKit, paste the Client ID, and click **Connect to Spotify**. Scopes requested: `user-read-currently-playing`, `user-read-playback-state`, `user-modify-playback-state`.
 
 > Song-request *playback* requires a Spotify **Premium** account. Reading Twitch chat for `!sr` commands is anonymous and needs no Twitch app at all.
+
+## Remote control (Stream Deck, Touch Portal, phone…)
+
+The installed desktop app runs a tiny local control server, so any controller that can send an HTTP request to your own machine can trigger StreamKit — no StreamKit-specific plugin required. Open the **Remote Control** tab to see your ready-to-paste URLs.
+
+- **Stream Deck:** add a *Website* action (or the free *Web Requests* / *API Ninja* plugin for a silent request), set it to `GET` one of the URLs.
+- **Touch Portal / Loupedeck / phone:** use a "send HTTP GET" action, or just bookmark the URL.
+- Endpoints look like `http://localhost:3001/api/action/<action>?token=<token>` — built-in actions include `toggle_window`, `show_window`, `hide_window`, `wheel_spin`, and `tool:<id>` (jump to any tool).
+
+The server binds to `localhost` only and every URL carries a private token (persisted across restarts), so other machines and stray web pages can't trigger your actions. The control API is part of the desktop build — it isn't available in browser-only dev mode.
 
 ## Develop
 

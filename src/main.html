@@ -426,6 +426,9 @@
       <button class="nav-item" data-tool="setup" onclick="loadTool(this)">
         <span class="nav-icon">📖</span><span class="nav-label">Setup Guide</span>
       </button>
+      <button class="nav-item" data-tool="remote" onclick="loadTool(this)">
+        <span class="nav-icon">🎛️</span><span class="nav-label">Remote Control</span>
+      </button>
 
       <div class="session-stats">
         <div class="session-stat">
@@ -542,6 +545,7 @@
     'raids':        'tools/raids/index.html',
     'scratchpad':   'tools/scratchpad/index.html',
     'setup':        'tools/setup/index.html',
+    'remote':       'tools/remote/index.html',
     'alerts':       'tools/alerts/index.html',
   };
 
@@ -826,6 +830,54 @@
   updateSessionStats();
   setInterval(updateSessionTimer, 1000);
   setInterval(updateSessionStats, 5000);
+</script>
+
+<!-- ─────────────────────────────────────────────
+     REMOTE CONTROL (Stream Deck / Touch Portal / etc.)
+     Polls the local control server for queued actions.
+     Only active in the packaged desktop app (the /api routes
+     live in the Tauri server, not the browser-dev server).
+───────────────────────────────────────────────── -->
+<script>
+  let remoteToken = null;
+
+  function dispatchRemoteAction(action) {
+    if (!action) return;
+    if (action.indexOf('tool:') === 0) {
+      const id = action.slice(5);
+      const btn = document.querySelector(`[data-tool="${id}"]`);
+      if (btn) loadTool(btn);
+    } else if (action === 'wheel_spin') {
+      localStorage.setItem('streamkit_wheel_autospin', String(Date.now()));
+      const btn = document.querySelector('[data-tool="wheel"]');
+      if (btn) loadTool(btn);
+    }
+    // window actions (show/hide/toggle) are handled server-side in Rust
+  }
+
+  async function remotePoll() {
+    if (!remoteToken) return;
+    try {
+      const r = await fetch('/api/actions?token=' + encodeURIComponent(remoteToken));
+      if (!r.ok) return;
+      const d = await r.json();
+      (d.actions || []).forEach(dispatchRemoteAction);
+    } catch (e) { /* server gone — ignore */ }
+  }
+
+  async function initRemote() {
+    try {
+      const r = await fetch('/api/token');
+      if (!r.ok) return;            // browser-dev mode: no control server
+      const d = await r.json();
+      if (!d.token) return;
+      remoteToken = d.token;
+      localStorage.setItem('streamkit_remote_token', d.token); // so the Remote page can show it
+      setInterval(remotePoll, 400);
+    } catch (e) { /* not running under Tauri — control API unavailable */ }
+  }
+
+  initRemote();
 </script>
 </body>
 </html>

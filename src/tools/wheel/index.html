@@ -374,6 +374,17 @@
 
     document.getElementById('entryInput').addEventListener('keydown', e => { if (e.key === 'Enter') addEntry(); });
 
+    // Remote-trigger: a controller (Stream Deck, etc.) can fire a spin by bumping
+    // streamkit_wheel_autospin via the dashboard's control API.
+    let lastAutospin = localStorage.getItem('streamkit_wheel_autospin') || '0';
+    setInterval(() => {
+      const v = localStorage.getItem('streamkit_wheel_autospin') || '0';
+      if (v !== lastAutospin) {
+        lastAutospin = v;
+        if (entries.length >= 2 && !spinning) spin();
+      }
+    }, 500);
+
     load();
   </script>
 </body>
