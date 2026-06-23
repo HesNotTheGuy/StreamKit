@@ -36,7 +36,7 @@ Every overlay tool has a "📋 Copy OBS Browser Source URL" button in its style 
 
 ## Install
 
-Grab the latest installer from [Releases](https://github.com/HesNotTheGuy/Streamtools/releases) and run it. Windows only for now (Tauri can cross-compile to macOS/Linux later if there's demand).
+Grab the latest installer from [Releases](https://github.com/HesNotTheGuy/StreamKit/releases) and run it. Windows only for now (Tauri can cross-compile to macOS/Linux later if there's demand).
 
 StreamKit uses port **3001** for OBS overlay URLs. If something else is already on that port, the app will refuse to start with a clear error — free the port and re-launch.
 
