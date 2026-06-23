@@ -1,0 +1,12 @@
+# Normalize line endings: store text as LF in the repo, regardless of OS.
+# Keeps the working tree consistent across machines (no spurious CRLF diffs).
+* text=auto eol=lf
+
+# Treat known binary assets as binary (never touch their bytes).
+*.png   binary
+*.ico   binary
+*.icns  binary
+*.woff2 binary
+*.exe   binary
+*.msi   binary
+*.dmg   binary
