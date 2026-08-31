@@ -392,7 +392,7 @@
       const slot = slots.find(s => s.id === id);
       if (!slot) return;
       editingId = id;
-      selectedIcon = slot.icon || '🔊';
+      selectedIcon = normalizeIcon(slot.icon, slots.indexOf(slot));
       document.getElementById('editLabel').value = slot.label;
       document.getElementById('editFile').value  = slot.file === '__idb' ? '' : (slot.file || '');
       const hint = document.getElementById('filePathHint');
