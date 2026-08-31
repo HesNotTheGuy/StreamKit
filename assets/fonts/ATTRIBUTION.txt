@@ -1,0 +1,5 @@
+Fonts bundled with StreamKit (SIL Open Font License 1.1):
+
+- Bebas Neue — https://github.com/dharmatype/Bebas-Neue (see OFL.txt)
+- Space Grotesk — https://github.com/googlefonts/space-grotesk (see OFL-SpaceGrotesk.txt)
+- Space Mono — https://github.com/googlefonts/spacemono (see OFL-SpaceMono.txt)

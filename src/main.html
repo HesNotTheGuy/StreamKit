@@ -5,174 +5,243 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>StreamKit</title>
   <style>
-    :root {
-      --bg:      #0f0f0f;
-      --bg2:     #1a1a1a;
-      --bg3:     #242424;
-      --border:  #2e2e2e;
-      --text:    #f0f0f0;
-      --muted:   #666;
-      --accent:  #7c6af7;
-      --green:   #2ecc71;
-      --red:     #e74c3c;
-      --twitch:  #9147ff;
-      --sidebar-w: 210px;
+    @font-face {
+      font-family: 'Bebas Neue';
+      src: url('../assets/fonts/BebasNeue-Regular.woff2') format('woff2');
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'Space Grotesk';
+      src: url('../assets/fonts/SpaceGrotesk-Regular.woff2') format('woff2');
+      font-weight: 400; font-display: swap;
+    }
+    @font-face {
+      font-family: 'Space Grotesk';
+      src: url('../assets/fonts/SpaceGrotesk-Medium.woff2') format('woff2');
+      font-weight: 500; font-display: swap;
+    }
+    @font-face {
+      font-family: 'Space Grotesk';
+      src: url('../assets/fonts/SpaceGrotesk-Bold.woff2') format('woff2');
+      font-weight: 700; font-display: swap;
+    }
+    @font-face {
+      font-family: 'Space Mono';
+      src: url('../assets/fonts/SpaceMono-Regular.woff2') format('woff2');
+      font-weight: 400; font-display: swap;
+    }
+    @font-face {
+      font-family: 'Space Mono';
+      src: url('../assets/fonts/SpaceMono-Bold.woff2') format('woff2');
+      font-weight: 700; font-display: swap;
     }
 
-    /* ── Themes ── */
-    :root[data-theme="midnight"] { --bg:#000000; --bg2:#07101c; --bg3:#0e1a2e; --border:#18283d; --muted:#5a7a9a; --accent:#3b9ef5; }
-    :root[data-theme="ember"]    { --bg:#0f0a06; --bg2:#1c1008; --bg3:#28180c; --border:#3a2210; --muted:#8a6040; --accent:#e8733a; }
-    :root[data-theme="forest"]   { --bg:#070f09; --bg2:#0c1a10; --bg3:#112318; --border:#1a3422; --muted:#4a7a5a; --accent:#3dba72; }
-    :root[data-theme="rose"]     { --bg:#0f080c; --bg2:#1c0e16; --bg3:#281520; --border:#3a1a2c; --muted:#8a4a6a; --accent:#e8449a; }
-    :root[data-theme="slate"]    { --bg:#080810; --bg2:#0f0f1e; --bg3:#16162c; --border:#22223a; --muted:#5a5a8a; --accent:#6eb5ff; }
+    :root {
+      --bg:      #0b0c0e;
+      --bg2:     #13151a;
+      --bg3:     #1c1f27;
+      --border:  #2c313c;
+      --text:    #ebe8e1;
+      --muted:   #858b97;
+      --accent:  #2fd4a9;
+      --green:   #3ecf8e;
+      --red:     #ef5a4e;
+      --twitch:  #9147ff;
+      --sidebar-w: 228px;
+      --font-ui: 'Space Grotesk', system-ui, sans-serif;
+      --font-display: 'Bebas Neue', 'Arial Narrow', sans-serif;
+      --font-mono: 'Space Mono', ui-monospace, monospace;
+    }
+
+    :root[data-theme="midnight"] { --bg:#02060d; --bg2:#07101c; --bg3:#0e1a2e; --border:#1a2c44; --muted:#6a849e; --accent:#4eb4f5; }
+    :root[data-theme="ember"]    { --bg:#0e0906; --bg2:#1a1009; --bg3:#26180e; --border:#3d2816; --muted:#9a6e4a; --accent:#ef7a3a; }
+    :root[data-theme="forest"]   { --bg:#060d08; --bg2:#0b1710; --bg3:#122119; --border:#1c3426; --muted:#5a8268; --accent:#45c47a; }
+    :root[data-theme="rose"]     { --bg:#0e070b; --bg2:#1a0e15; --bg3:#26151f; --border:#3a1e2c; --muted:#94607a; --accent:#e85a9a; }
+    :root[data-theme="slate"]    { --bg:#08090f; --bg2:#10121c; --bg3:#181b2a; --border:#262a3e; --muted:#6a6e8a; --accent:#7ab0ff; }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(--text);
-      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
+    html, body {
+      height: 100%; overflow: hidden;
+      background: var(--bg); color: var(--text);
+      font-family: var(--font-ui);
+    }
 
     .layout { display: flex; height: 100vh; }
 
-    /* ── Sidebar ── */
     .sidebar {
       width: var(--sidebar-w);
       flex-shrink: 0;
-      background: linear-gradient(180deg,
-        color-mix(in srgb, var(--accent) 5%, var(--bg2)) 0%,
-        var(--bg2) 35%);
+      background:
+        linear-gradient(180deg, color-mix(in srgb, var(--accent) 6%, var(--bg2)) 0%, var(--bg2) 28%),
+        var(--bg2);
       border-right: 1px solid var(--border);
-      box-shadow: 1px 0 12px rgba(0,0,0,0.35);
       display: flex;
       flex-direction: column;
       overflow: hidden;
+      position: relative;
+    }
+    .sidebar::before {
+      content: '';
+      position: absolute; inset: 0; pointer-events: none; opacity: 0.35;
+      background: repeating-linear-gradient(
+        90deg,
+        transparent 0 3px,
+        color-mix(in srgb, var(--text) 2.2%, transparent) 3px 4px
+      );
     }
 
-    /* Brand */
     .sidebar-brand {
-      padding: 14px 14px 12px;
-      border-bottom: 1px solid color-mix(in srgb, var(--accent) 12%, var(--border));
+      padding: 18px 16px 14px;
+      border-bottom: 1px solid var(--border);
       flex-shrink: 0;
+      position: relative;
+      z-index: 1;
     }
-    .brand-row { display: flex; align-items: center; justify-content: space-between; }
+    .brand-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
     .brand-title {
-      font-size: 16px; font-weight: 800; letter-spacing: -0.3px;
-      background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 55%, #e0d9ff));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-      filter: drop-shadow(0 0 8px color-mix(in srgb, var(--accent) 35%, transparent));
+      font-family: var(--font-display);
+      font-size: 28px;
+      font-weight: 400;
+      letter-spacing: 0.06em;
+      line-height: 0.92;
+      color: var(--text);
     }
     .live-pill {
       display: none;
       align-items: center;
-      gap: 4px;
-      padding: 2px 8px;
-      border-radius: 10px;
-      background: rgba(231,76,60,0.15);
-      border: 1px solid rgba(231,76,60,0.35);
+      gap: 5px;
+      margin-top: 4px;
+      padding: 3px 7px;
+      border-radius: 3px;
+      background: color-mix(in srgb, var(--red) 14%, transparent);
+      border: 1px solid color-mix(in srgb, var(--red) 45%, transparent);
+      font-family: var(--font-mono);
       font-size: 10px;
-      font-weight: 800;
+      font-weight: 700;
       color: var(--red);
-      letter-spacing: 0.5px;
+      letter-spacing: 0.08em;
     }
     .live-pill.show { display: flex; }
     .live-dot {
       width: 6px; height: 6px;
-      border-radius: 50%;
+      border-radius: 1px;
       background: var(--red);
       animation: pulse-live 1.4s ease infinite;
     }
     @keyframes pulse-live {
-      0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(231,76,60,0.5); }
-      50%       { opacity: 0.7; box-shadow: 0 0 0 4px rgba(231,76,60,0); }
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.35; }
     }
-    .brand-sub { font-size: 10px; color: var(--muted); margin-top: 3px; }
+    .brand-sub {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--muted);
+      margin-top: 8px;
+      letter-spacing: 0.04em;
+    }
 
-    /* Nav */
-    .nav { flex: 1; padding: 6px 0; overflow-y: auto; }
+    .nav { flex: 1; padding: 8px 8px 0; overflow-y: auto; position: relative; z-index: 1; }
     .nav-item {
-      display: flex; align-items: center; gap: 9px;
-      padding: 9px 14px; cursor: pointer;
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 10px; cursor: pointer;
       font-size: 13px; font-weight: 500; color: var(--muted);
-      border: none; background: none; width: 100%; text-align: left;
-      transition: background 0.14s, color 0.14s, transform 0.14s; position: relative;
-      font-family: inherit; border-radius: 0;
+      border: 1px solid transparent; background: none; width: 100%; text-align: left;
+      transition: background 0.14s, color 0.14s, border-color 0.14s;
+      font-family: inherit; border-radius: 6px;
+      position: relative;
+      margin-bottom: 1px;
     }
     .nav-item:hover {
       background: color-mix(in srgb, var(--accent) 7%, var(--bg3));
       color: var(--text);
-      transform: translateX(2px);
     }
     .nav-item.active {
-      background: linear-gradient(90deg,
-        color-mix(in srgb, var(--accent) 20%, transparent) 0%,
-        color-mix(in srgb, var(--accent) 6%, transparent) 100%);
-      color: #fff;
+      background: color-mix(in srgb, var(--accent) 12%, var(--bg3));
+      border-color: color-mix(in srgb, var(--accent) 28%, var(--border));
+      color: var(--text);
       font-weight: 700;
     }
     .nav-item.active::before {
-      content: ''; position: absolute; left: 0; top: 3px; bottom: 3px;
+      content: '';
+      position: absolute; left: -8px; top: 8px; bottom: 8px;
       width: 3px;
-      background: linear-gradient(180deg,
-        color-mix(in srgb, var(--accent) 80%, #fff),
-        var(--accent));
-      border-radius: 0 3px 3px 0;
-      box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 70%, transparent);
+      background: var(--accent);
+      border-radius: 0 2px 2px 0;
     }
-    .nav-icon  { font-size: 15px; flex-shrink: 0; }
+    .nav-icon {
+      width: 16px; height: 16px; flex-shrink: 0;
+      display: inline-flex; align-items: center; justify-content: center;
+      color: inherit;
+    }
+    .nav-icon svg { width: 16px; height: 16px; display: block; }
     .nav-label { flex: 1; }
     .nav-badge {
-      font-size: 9px; padding: 2px 6px; border-radius: 8px;
-      background: color-mix(in srgb, var(--accent) 18%, transparent);
+      font-family: var(--font-mono);
+      font-size: 9px; padding: 2px 5px; border-radius: 3px;
+      background: color-mix(in srgb, var(--accent) 12%, transparent);
       border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
-      color: var(--accent); font-weight: 700;
-      animation: obs-badge-glow 2.4s ease-in-out infinite;
-    }
-    @keyframes obs-badge-glow {
-      0%, 100% { box-shadow: none; }
-      50%       { box-shadow: 0 0 6px color-mix(in srgb, var(--accent) 40%, transparent); }
+      color: var(--accent); font-weight: 700; letter-spacing: 0.04em;
     }
     .nav-badge-live {
-      font-size: 9px; padding: 2px 6px; border-radius: 8px;
+      font-family: var(--font-mono);
+      font-size: 9px; padding: 2px 5px; border-radius: 3px;
       background: var(--red); color: #fff; font-weight: 700;
+      letter-spacing: 0.04em;
       animation: live-pulse 2s ease-in-out infinite;
     }
     @keyframes live-pulse {
       0%, 100% { opacity: 1; }
-      50%       { opacity: 0.5; }
+      50%       { opacity: 0.55; }
     }
 
-    /* ── Session stats widget ── */
     .session-stats {
       border-top: 1px solid var(--border);
-      background: var(--bg2);
-      padding: 12px 14px;
-      font-size: 12px;
-      display: flex;
-      flex-direction: column;
+      background: color-mix(in srgb, var(--bg) 55%, var(--bg2));
+      padding: 12px 10px;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
       gap: 6px;
       flex-shrink: 0;
+      margin: 8px 0 0;
     }
     .session-stat {
       display: flex;
-      align-items: center;
-      gap: 6px;
-      line-height: 1.3;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
     }
-    .session-stat-label { color: var(--muted); flex-shrink: 0; }
-    .session-stat-value { color: var(--text); font-weight: 600; }
+    .session-stat-label {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .session-stat-value {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text);
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
     .nav-group-label {
-      padding: 10px 14px 3px; font-size: 9px; font-weight: 800;
-      color: color-mix(in srgb, var(--accent) 45%, var(--muted));
-      text-transform: uppercase; letter-spacing: 1.5px;
+      padding: 12px 10px 4px;
+      font-family: var(--font-mono);
+      font-size: 9px; font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.14em;
     }
 
-    /* ── Sidebar footer: Twitch profile ── */
     .sidebar-footer {
       border-top: 1px solid var(--border);
       flex-shrink: 0;
+      position: relative;
+      z-index: 1;
+      background: var(--bg2);
     }
 
-    /* Connected state */
     .twitch-profile {
       display: none;
       flex-direction: column;
@@ -181,16 +250,14 @@
     }
     .twitch-profile.show { display: flex; }
 
-    .profile-row {
-      display: flex; align-items: center; gap: 9px;
-    }
+    .profile-row { display: flex; align-items: center; gap: 9px; }
     .profile-avatar {
       width: 32px; height: 32px;
-      border-radius: 50%;
+      border-radius: 4px;
       object-fit: cover;
       background: var(--bg3);
       flex-shrink: 0;
-      border: 2px solid var(--twitch);
+      border: 1px solid var(--twitch);
     }
     .profile-info { flex: 1; min-width: 0; }
     .profile-name {
@@ -201,10 +268,10 @@
 
     .stream-info {
       display: none;
-      padding: 6px 10px;
-      background: rgba(231,76,60,0.08);
-      border: 1px solid rgba(231,76,60,0.2);
-      border-radius: 7px;
+      padding: 7px 9px;
+      background: color-mix(in srgb, var(--red) 8%, transparent);
+      border: 1px solid color-mix(in srgb, var(--red) 25%, transparent);
+      border-radius: 6px;
       font-size: 11px;
       color: var(--muted);
       line-height: 1.5;
@@ -218,82 +285,79 @@
     }
     .twitch-disconnect:hover { color: var(--red); }
 
-    /* Disconnected state */
-    .twitch-connect-footer {
-      padding: 10px 14px;
-    }
+    .twitch-connect-footer { padding: 10px 14px; }
     .connect-twitch-btn {
       width: 100%;
-      display: flex; align-items: center; justify-content: center; gap: 7px;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
       padding: 9px 12px;
-      background: rgba(145,71,255,0.12);
-      border: 1px solid rgba(145,71,255,0.35);
-      border-radius: 8px;
-      color: var(--twitch);
+      background: color-mix(in srgb, var(--twitch) 12%, transparent);
+      border: 1px solid color-mix(in srgb, var(--twitch) 40%, transparent);
+      border-radius: 6px;
+      color: #c4a6ff;
       font-size: 13px; font-weight: 700;
       cursor: pointer;
-      transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+      transition: background 0.15s, border-color 0.15s;
       font-family: inherit;
     }
     .connect-twitch-btn:hover {
-      background: rgba(145,71,255,0.22);
-      border-color: rgba(145,71,255,0.6);
-      box-shadow: 0 0 16px rgba(145,71,255,0.25);
+      background: color-mix(in srgb, var(--twitch) 22%, transparent);
+      border-color: color-mix(in srgb, var(--twitch) 65%, transparent);
     }
-    .version-label { font-size: 10px; color: var(--muted); margin-top: 7px; text-align: center; }
+    .connect-twitch-btn .tw-mark {
+      width: 14px; height: 14px; display: inline-block;
+    }
+    .version-label {
+      font-family: var(--font-mono);
+      font-size: 10px; color: var(--muted); margin-top: 8px; text-align: center;
+    }
 
-    /* ── Theme picker ── */
     .theme-row {
-      display: flex; align-items: center; gap: 6px;
-      padding: 8px 14px;
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 14px;
       border-bottom: 1px solid var(--border);
     }
-    .theme-label { font-size: 9px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; flex-shrink: 0; }
-    .theme-swatches { display: flex; gap: 4px; flex-wrap: nowrap; }
+    .theme-label {
+      font-family: var(--font-mono);
+      font-size: 9px; font-weight: 700; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.1em; flex-shrink: 0;
+    }
+    .theme-swatches { display: flex; gap: 5px; flex-wrap: nowrap; }
     .theme-swatch {
-      width: 16px; height: 16px; border-radius: 50%;
-      cursor: pointer; border: 2px solid transparent;
-      transition: transform 0.12s, border-color 0.15s, box-shadow 0.15s;
-      flex-shrink: 0;
+      width: 14px; height: 14px; border-radius: 2px;
+      cursor: pointer; border: 1px solid transparent;
+      transition: transform 0.12s, border-color 0.15s;
+      flex-shrink: 0; padding: 0;
     }
-    .theme-swatch:hover { transform: scale(1.3); }
-    .theme-swatch.active {
-      border-color: rgba(255,255,255,0.9);
-      box-shadow: 0 0 6px rgba(255,255,255,0.35);
-    }
+    .theme-swatch:hover { transform: translateY(-1px); }
+    .theme-swatch.active { border-color: var(--text); }
 
-    /* ── Content ── */
-    .content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+    .content { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
     .content-frame {
       flex: 1; border: none; width: 100%; height: 100%;
-      background: radial-gradient(ellipse 60% 40% at 80% 10%,
-        color-mix(in srgb, var(--accent) 4%, var(--bg)) 0%,
-        var(--bg) 55%);
+      background: var(--bg);
       display: block;
     }
 
-    /* ── Twitch Modal ── */
     .modal-bg {
       display: none; position: fixed; inset: 0;
-      background: rgba(0,0,0,0.82);
-      backdrop-filter: blur(4px);
+      background: rgba(0,0,0,0.78);
       z-index: 1000;
       align-items: center; justify-content: center;
     }
     .modal-bg.open { display: flex; }
     .modal {
-      background: linear-gradient(160deg,
-        color-mix(in srgb, var(--accent) 6%, var(--bg2)) 0%,
-        var(--bg2) 60%);
-      border: 1px solid color-mix(in srgb, var(--accent) 20%, var(--border));
-      border-radius: 18px; padding: 28px; width: 400px; max-width: 95vw;
-      box-shadow: 0 24px 64px rgba(0,0,0,0.6),
-                  0 0 0 1px color-mix(in srgb, var(--accent) 8%, transparent);
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 10px; padding: 26px; width: 400px; max-width: 95vw;
+      box-shadow: 0 18px 48px rgba(0,0,0,0.55);
     }
     .modal-header {
       display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;
     }
-    .modal-title { font-size: 18px; font-weight: 800; }
+    .modal-title {
+      font-family: var(--font-display);
+      font-size: 26px; letter-spacing: 0.05em;
+    }
     .modal-close {
       background: none; border: none; color: var(--muted); cursor: pointer;
       font-size: 22px; line-height: 1; padding: 0 4px; font-family: inherit;
@@ -302,9 +366,10 @@
     .modal-steps { display: flex; flex-direction: column; gap: 14px; }
     .modal-step { display: flex; gap: 12px; align-items: flex-start; }
     .step-num {
-      width: 24px; height: 24px; border-radius: 50%;
+      width: 22px; height: 22px; border-radius: 3px;
       background: var(--twitch); color: #fff;
-      font-size: 12px; font-weight: 800;
+      font-family: var(--font-mono);
+      font-size: 11px; font-weight: 700;
       display: flex; align-items: center; justify-content: center; flex-shrink: 0;
     }
     .step-body { flex: 1; }
@@ -312,7 +377,7 @@
     .step-body p  { font-size: 12px; color: var(--muted); line-height: 1.5; margin-bottom: 6px; }
     .copy-row { display: flex; gap: 6px; }
     .copy-row input {
-      flex: 1; font-family: monospace; font-size: 11px; color: #9147ff;
+      flex: 1; font-family: var(--font-mono); font-size: 11px; color: #c4a6ff;
       background: var(--bg3); border: 1px solid var(--border);
       border-radius: 6px; padding: 6px 8px; outline: none;
     }
@@ -326,17 +391,16 @@
     .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
     .btn-twitch {
       padding: 11px 20px; background: var(--twitch); color: #fff;
-      border: none; border-radius: 8px; font-size: 14px; font-weight: 700;
+      border: none; border-radius: 6px; font-size: 14px; font-weight: 700;
       cursor: pointer; font-family: inherit;
     }
-    .btn-twitch:hover { filter: brightness(1.1); }
+    .btn-twitch:hover { filter: brightness(1.08); }
     .btn-ghost-sm {
       padding: 11px 16px; background: var(--bg3); border: 1px solid var(--border);
-      border-radius: 8px; font-size: 13px; color: var(--muted);
+      border-radius: 6px; font-size: 13px; color: var(--muted);
       cursor: pointer; font-family: inherit;
     }
 
-    /* Scrollbar */
     ::-webkit-scrollbar { width: 4px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
@@ -349,98 +413,107 @@
   <aside class="sidebar">
     <div class="sidebar-brand">
       <div class="brand-row">
-        <div class="brand-title">StreamKit</div>
+        <div class="brand-title">STREAMKIT</div>
         <div class="live-pill" id="livePill"><div class="live-dot"></div>LIVE</div>
       </div>
-      <div class="brand-sub" id="brandSub">Streamer Utility Suite</div>
+      <div class="brand-sub" id="brandSub">local · second monitor</div>
     </div>
 
     <nav class="nav">
       <div class="nav-group-label">Tools</div>
 
       <button class="nav-item" data-tool="spotify" onclick="loadTool(this)">
-        <span class="nav-icon">🎵</span>
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 10.5c2.5-1 5.5-1 8.5.2M8.5 13.5c2-.7 4.2-.7 6.5.3M9 16.3c1.4-.5 3-.5 4.6.2"/></svg></span>
         <span class="nav-label">Spotify</span>
         <span class="nav-badge">OBS</span>
       </button>
       <button class="nav-item active" data-tool="wl-tracker" onclick="loadTool(this)">
-        <span class="nav-icon">📊</span>
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V5M4 19h16"/><path d="M8 15v-4M12 15V8M16 15v-6"/></svg></span>
         <span class="nav-label">W/L Tracker</span>
         <span class="nav-badge">OBS</span>
       </button>
       <button class="nav-item" data-tool="checklist" onclick="loadTool(this)">
-        <span class="nav-icon">✅</span><span class="nav-label">Checklist</span>
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6.5l1.2 1.2L7.2 5.5M4 12.5l1.2 1.2L7.2 11.5M4 18.5l1.2 1.2L7.2 17.5"/></svg></span>
+        <span class="nav-label">Checklist</span>
       </button>
       <button class="nav-item" data-tool="minigames" onclick="loadTool(this)">
-        <span class="nav-icon">🎮</span>
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="11" rx="3"/><path d="M8 12h2M9 11v2M15.5 11.5h.01M17.5 13.5h.01"/></svg></span>
         <span class="nav-label">Mini-Games</span>
         <span class="nav-badge">OBS</span>
       </button>
       <button class="nav-item" data-tool="timers" onclick="loadTool(this)">
-        <span class="nav-icon">⏱</span>
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 1.5M9 3h6"/></svg></span>
         <span class="nav-label">Timers</span>
         <span class="nav-badge">OBS</span>
       </button>
       <button class="nav-item" data-tool="queue" onclick="loadTool(this)">
-        <span class="nav-icon">👥</span><span class="nav-label">Viewer Queue</span>
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 19v-1.2A3.8 3.8 0 0 0 12.2 14H7.8A3.8 3.8 0 0 0 4 17.8V19"/><circle cx="10" cy="8" r="3"/><path d="M20 19v-1.1a3.2 3.2 0 0 0-2.4-3.1M16.5 5.1a3 3 0 0 1 0 5.8"/></svg></span>
+        <span class="nav-label">Viewer Queue</span>
       </button>
       <button class="nav-item" data-tool="goal-tracker" onclick="loadTool(this)">
-        <span class="nav-icon">🎯</span>
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"/></svg></span>
         <span class="nav-label">Goal Tracker</span>
         <span class="nav-badge">OBS</span>
       </button>
       <button class="nav-item" data-tool="soundboard" onclick="loadTool(this)">
-        <span class="nav-icon">🔊</span><span class="nav-label">Soundboard</span>
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10v4M8 7v10M12 4v16M16 8v8M20 11v2"/></svg></span>
+        <span class="nav-label">Soundboard</span>
       </button>
       <button class="nav-item" data-tool="clip-notes" onclick="loadTool(this)">
-        <span class="nav-icon">📋</span><span class="nav-label">Clip Notes</span>
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4h7l3 3v13H8z"/><path d="M15 4v3h3M10 12h6M10 16h4"/></svg></span>
+        <span class="nav-label">Clip Notes</span>
       </button>
       <button class="nav-item" data-tool="chat-wall" onclick="loadTool(this)">
-        <span class="nav-icon">📌</span>
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5h14v10H8l-3 3V5z"/></svg></span>
         <span class="nav-label">Chat Wall</span>
         <span class="nav-badge">OBS</span>
       </button>
       <button class="nav-item" data-tool="alerts" onclick="loadTool(this)">
-        <span class="nav-icon">🔔</span>
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4a6 6 0 0 1 6 6v3.5l1.5 2.5H4.5L6 13.5V10a6 6 0 0 1 6-6z"/><path d="M10 19a2 2 0 0 0 4 0"/></svg></span>
         <span class="nav-label">Alerts</span>
         <span class="nav-badge-live">LIVE</span>
       </button>
       <button class="nav-item" data-tool="wheel" onclick="loadTool(this)">
-        <span class="nav-icon">🎡</span>
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M12 4v16M4 12h16M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg></span>
         <span class="nav-label">Wheel</span>
         <span class="nav-badge">OBS</span>
       </button>
 
       <div class="nav-group-label" style="margin-top:6px">Twitch</div>
       <button class="nav-item" data-tool="stream-info" onclick="loadTool(this)">
-        <span class="nav-icon">📡</span><span class="nav-label">Stream Info</span>
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8c4-4 12-4 16 0M6.5 11c3-3 8-3 11 0"/><circle cx="12" cy="16" r="2"/></svg></span>
+        <span class="nav-label">Stream Info</span>
       </button>
       <button class="nav-item" data-tool="raids" onclick="loadTool(this)">
-        <span class="nav-icon">⚔️</span><span class="nav-label">Raid Tracker</span>
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19V8l7-4 7 4v11"/><path d="M9 19v-6h6v6"/></svg></span>
+        <span class="nav-label">Raid Tracker</span>
       </button>
       <button class="nav-item" data-tool="scratchpad" onclick="loadTool(this)">
-        <span class="nav-icon">📝</span><span class="nav-label">Scratch Pad</span>
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h9l3 3v13H6z"/><path d="M9 12h6M9 16h4"/></svg></span>
+        <span class="nav-label">Scratch Pad</span>
       </button>
 
       <div class="nav-group-label" style="margin-top:6px">Help</div>
       <button class="nav-item" data-tool="setup" onclick="loadTool(this)">
-        <span class="nav-icon">📖</span><span class="nav-label">Setup Guide</span>
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5h14v14H5z"/><path d="M8 9h8M8 12h8M8 15h5"/></svg></span>
+        <span class="nav-label">Setup Guide</span>
       </button>
       <button class="nav-item" data-tool="remote" onclick="loadTool(this)">
-        <span class="nav-icon">🎛️</span><span class="nav-label">Remote Control</span>
+        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="3" width="10" height="18" rx="2"/><circle cx="12" cy="15" r="2"/><path d="M10 7h4"/></svg></span>
+        <span class="nav-label">Remote Control</span>
       </button>
 
       <div class="session-stats">
         <div class="session-stat">
-          <span class="session-stat-label">⏱</span>
+          <span class="session-stat-label">Session</span>
           <span class="session-stat-value" id="statSessionTime">0:00:00</span>
         </div>
         <div class="session-stat">
-          <span class="session-stat-label">🎮 W/L</span>
+          <span class="session-stat-label">W / L</span>
           <span class="session-stat-value" id="statWL">—</span>
         </div>
         <div class="session-stat">
-          <span class="session-stat-label">🎯 Goals</span>
+          <span class="session-stat-label">Goals</span>
           <span class="session-stat-value" id="statGoals">—</span>
         </div>
       </div>
@@ -468,9 +541,10 @@
       <!-- Disconnected -->
       <div class="twitch-connect-footer" id="twitchConnectFooter">
         <button class="connect-twitch-btn" onclick="showTwitchModal()">
-          <span>🟣</span> Connect Twitch
+          <svg class="tw-mark" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M4.3 2L2 5.5v14.2h4.9V22l2.4-2.3h3.7L20.5 13V2H4.3zm14.6 10l-2.9 2.9h-3.1l-2.1 2.1v-2.1H6.6V3.8h12.3V12zM15 6.6h-1.6v4.7H15V6.6zm-4.1 0H9.2v4.7h1.7V6.6z"/></svg>
+          Connect Twitch
         </button>
-        <div class="version-label">v1.1 · All data stored locally</div>
+        <div class="version-label">v1.1 · all data local</div>
       </div>
     </div>
   </aside>
@@ -485,7 +559,7 @@
 <div class="modal-bg" id="twitchModal">
   <div class="modal">
     <div class="modal-header">
-      <div class="modal-title">🟣 Connect Twitch</div>
+      <div class="modal-title">Connect Twitch</div>
       <button class="modal-close" onclick="closeTwitchModal()">×</button>
     </div>
     <div class="modal-steps">
@@ -713,12 +787,12 @@
   const THEME_KEY = 'streamkit_theme';
 
   const THEMES = [
-    { id: 'default',  label: 'Default',  color: '#7c6af7' },
-    { id: 'midnight', label: 'Midnight', color: '#3b9ef5' },
-    { id: 'ember',    label: 'Ember',    color: '#e8733a' },
-    { id: 'forest',   label: 'Forest',   color: '#3dba72' },
-    { id: 'rose',     label: 'Rose',     color: '#e8449a' },
-    { id: 'slate',    label: 'Slate',    color: '#6eb5ff' },
+    { id: 'default',  label: 'Signal',   color: '#2fd4a9' },
+    { id: 'midnight', label: 'Midnight', color: '#4eb4f5' },
+    { id: 'ember',    label: 'Ember',    color: '#ef7a3a' },
+    { id: 'forest',   label: 'Forest',   color: '#45c47a' },
+    { id: 'rose',     label: 'Rose',     color: '#e85a9a' },
+    { id: 'slate',    label: 'Slate',    color: '#7ab0ff' },
   ];
 
   function applyThemeToDoc(doc, themeId) {

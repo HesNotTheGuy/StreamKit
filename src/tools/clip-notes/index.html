@@ -159,7 +159,7 @@
       funny:    '#f0a500',
       hype:     '#2ecc71',
       rage:     '#e74c3c',
-      clip:     '#7c6af7',
+      clip:     '#2fd4a9',
       moment:   '#3498db',
       fail:     '#e67e22'
     }
@@ -220,7 +220,7 @@
       funny:  { bg: 'rgba(240,165,0,0.15)',   color: '#f0a500' },
       hype:   { bg: 'rgba(46,204,113,0.15)',   color: '#2ecc71' },
       rage:   { bg: 'rgba(231,76,60,0.15)',    color: '#e74c3c' },
-      clip:   { bg: 'rgba(124,106,247,0.15)',  color: '#7c6af7' },
+      clip:   { bg: 'rgba(47,212,169,0.15)',  color: '#2fd4a9' },
       moment: { bg: 'rgba(52,152,219,0.15)',   color: '#3498db' },
       fail:   { bg: 'rgba(230,126,34,0.15)',   color: '#e67e22' },
     };
@@ -348,7 +348,7 @@
       list.querySelectorAll('.clip-item').forEach(el => el.remove());
 
       clips.forEach(c => {
-        const colors = TAG_COLORS[c.tag] || { bg: 'rgba(124,106,247,0.15)', color: '#7c6af7' };
+        const colors = TAG_COLORS[c.tag] || { bg: 'rgba(47,212,169,0.15)', color: '#2fd4a9' };
         const div = document.createElement('div');
         div.className = 'clip-item';
         div.innerHTML = `

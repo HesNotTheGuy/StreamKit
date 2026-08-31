@@ -297,7 +297,7 @@
       <div class="style-section-label">Colors</div>
       <div class="color-row">
         <div class="color-swatch"><label>Progress Bar</label>
-          <input type="color" id="colorBar" value="#7c6af7" oninput="saveOvStyle()"></div>
+          <input type="color" id="colorBar" value="#2fd4a9" oninput="saveOvStyle()"></div>
         <div class="color-swatch"><label>Goal Reached</label>
           <input type="color" id="colorComplete" value="#2ecc71" oninput="saveOvStyle()"></div>
       </div>
@@ -321,7 +321,7 @@
 
   <script>
     const OV_KEY  = 'streamkit_overlay_goals';
-    const OV_DEFS = { font: 'system', colorBar: '#7c6af7', colorComplete: '#2ecc71' };
+    const OV_DEFS = { font: 'system', colorBar: '#2fd4a9', colorComplete: '#2ecc71' };
 
     let currentOvFont = 'system';
     function getOvStyle() {
@@ -359,7 +359,7 @@
     function loadOvStyle() {
       const s = getOvStyle();
       currentOvFont = s.font || 'system';
-      document.getElementById('colorBar').value      = s.colorBar      || '#7c6af7';
+      document.getElementById('colorBar').value      = s.colorBar      || '#2fd4a9';
       document.getElementById('colorComplete').value = s.colorComplete || '#2ecc71';
       buildFontGrid();
       updatePreview(s);

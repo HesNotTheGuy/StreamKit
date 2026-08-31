@@ -209,8 +209,8 @@
       transition: border-color 0.15s, background 0.15s;
       user-select: none;
     }
-    .opt-card:hover { border-color: rgba(124,106,247,0.4); }
-    .opt-card.active { border-color: var(--accent); background: rgba(124,106,247,0.1); }
+    .opt-card:hover { border-color: rgba(47,212,169,0.4); }
+    .opt-card.active { border-color: var(--accent); background: rgba(47,212,169,0.1); }
     .opt-icon  { font-size: 18px; line-height: 1; }
     .opt-label { font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
     .opt-card.active .opt-label { color: var(--text); }
@@ -221,14 +221,14 @@
       display: inline-flex; flex-direction: column; gap: 6px;
       min-height: 52px; transition: background 0.2s, border-color 0.2s;
     }
-    .pv-bg-none  { background: rgba(0,0,0,0.45); border: 1px solid color-mix(in srgb, var(--chrome, #7c6af7) 20%, transparent); }
-    .pv-bg-glass { background: rgba(0,0,0,0.55); border: 1px solid color-mix(in srgb, var(--chrome, #7c6af7) 35%, transparent); }
-    .pv-bg-solid { background: rgba(12,12,12,0.96); border: 1px solid color-mix(in srgb, var(--chrome, #7c6af7) 22%, transparent); }
-    .prev-stats { font-size: 12px; color: color-mix(in srgb, var(--chrome, #7c6af7) 30%, rgba(255,255,255,0.75)); font-weight: 600; }
+    .pv-bg-none  { background: rgba(0,0,0,0.45); border: 1px solid color-mix(in srgb, var(--chrome, #2fd4a9) 20%, transparent); }
+    .pv-bg-glass { background: rgba(0,0,0,0.55); border: 1px solid color-mix(in srgb, var(--chrome, #2fd4a9) 35%, transparent); }
+    .pv-bg-solid { background: rgba(12,12,12,0.96); border: 1px solid color-mix(in srgb, var(--chrome, #2fd4a9) 22%, transparent); }
+    .prev-stats { font-size: 12px; color: color-mix(in srgb, var(--chrome, #2fd4a9) 30%, rgba(255,255,255,0.75)); font-weight: 600; }
     /* pill layout preview */
-    .pv-pill { display: flex; align-items: center; border: 1px solid color-mix(in srgb, var(--chrome, #7c6af7) 45%, transparent); border-radius: 999px; overflow: hidden; background: rgba(0,0,0,0.3); }
+    .pv-pill { display: flex; align-items: center; border: 1px solid color-mix(in srgb, var(--chrome, #2fd4a9) 45%, transparent); border-radius: 999px; overflow: hidden; background: rgba(0,0,0,0.3); }
     .pv-pill-seg { font-weight: 800; padding: 4px 10px; line-height: 1; }
-    .pv-pill-sep { width: 1px; background: color-mix(in srgb, var(--chrome, #7c6af7) 45%, transparent); align-self: stretch; }
+    .pv-pill-sep { width: 1px; background: color-mix(in srgb, var(--chrome, #2fd4a9) 45%, transparent); align-self: stretch; }
 
     .preview-hint { font-size: 11px; color: var(--muted); margin-top: 8px; }
   </style>
@@ -267,7 +267,7 @@
         <div class="color-swatch"><label>Draw</label>
           <input type="color" id="colorD" value="#f0a500" oninput="saveOvStyle()"></div>
         <div class="color-swatch"><label title="Box border, separators &amp; labels">Accent</label>
-          <input type="color" id="chromeColor" value="#7c6af7" oninput="saveOvStyle()" title="Box border, separators &amp; labels"></div>
+          <input type="color" id="chromeColor" value="#2fd4a9" oninput="saveOvStyle()" title="Box border, separators &amp; labels"></div>
       </div>
     </div>
     <div class="style-section">
@@ -300,7 +300,7 @@
       font: 'system', colorW: '#2ecc71', colorL: '#e74c3c', colorD: '#f0a500',
       showDraws: true, showWinRate: true, showStreak: true,
       layout: 'horizontal', background: 'none', size: 'md',
-      effect: 'none', chromeColor: '#7c6af7',
+      effect: 'none', chromeColor: '#2fd4a9',
     };
 
     const LAYOUTS = [
@@ -329,7 +329,7 @@
     let currentBg       = 'none';
     let currentSize     = 'md';
     let currentEffect   = 'none';
-    let currentChrome   = '#7c6af7';
+    let currentChrome   = '#2fd4a9';
 
     function getOvStyle() {
       try { return { ...OV_DEFS, ...JSON.parse(localStorage.getItem(OV_KEY)) }; }
@@ -371,7 +371,7 @@
       const box    = document.getElementById('previewBox');
       const showD  = s.showDraws !== false;
       const eff    = s.effect || 'none';
-      const chrome = s.chromeColor || '#7c6af7';
+      const chrome = s.chromeColor || '#2fd4a9';
       const cW = s.colorW, cL = s.colorL, cD = s.colorD;
 
       box.className    = 'style-preview-box pv-bg-' + (s.background || 'none');
@@ -474,11 +474,11 @@
       currentBg     = s.background  || 'none';
       currentSize   = s.size        || 'md';
       currentEffect = s.effect      || 'none';
-      currentChrome = s.chromeColor || '#7c6af7';
+      currentChrome = s.chromeColor || '#2fd4a9';
       document.getElementById('colorW').value      = s.colorW      || '#2ecc71';
       document.getElementById('colorL').value      = s.colorL      || '#e74c3c';
       document.getElementById('colorD').value      = s.colorD      || '#f0a500';
-      document.getElementById('chromeColor').value = s.chromeColor || '#7c6af7';
+      document.getElementById('chromeColor').value = s.chromeColor || '#2fd4a9';
       document.getElementById('showDraws').checked   = s.showDraws  !== false;
       document.getElementById('showWinRate').checked = s.showWinRate !== false;
       document.getElementById('showStreak').checked  = s.showStreak  !== false;
