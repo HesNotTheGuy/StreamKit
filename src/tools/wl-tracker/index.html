@@ -7,34 +7,78 @@
   <link rel="stylesheet" href="../../../assets/styles/dashboard.css">
   <script src="../../../assets/js/util.js"></script>
   <style>
-    body { padding: 24px; max-width: 520px; }
+    body {
+      padding: 28px 32px;
+      max-width: 560px;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
 
-    .tool-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+    .tool-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      margin-bottom: 18px;
+      gap: 12px;
+    }
+    .tool-header h1 { margin: 0; }
+    .tool-meta {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: 0.06em;
+    }
 
-    .game-input { font-size: 17px; padding: 12px 16px; margin-bottom: 20px; }
+    .game-input {
+      font-size: 15px;
+      padding: 12px 14px;
+      margin-bottom: 16px;
+      border-radius: 6px;
+    }
 
     .record-card {
       text-align: center;
-      padding: 36px 20px 28px;
-      margin-bottom: 20px;
+      padding: 32px 20px 24px;
+      margin-bottom: 16px;
       position: relative;
+      background:
+        linear-gradient(180deg, color-mix(in srgb, var(--accent) 6%, var(--bg2)) 0%, var(--bg2) 40%);
+      border-color: color-mix(in srgb, var(--accent) 22%, var(--border));
     }
     .record-numbers {
       display: flex;
-      align-items: center;
+      align-items: flex-end;
       justify-content: center;
-      gap: 6px;
-      margin-bottom: 16px;
+      gap: 4px;
+      margin-bottom: 18px;
     }
     .rn-num {
-      font-size: 64px;
-      font-weight: 800;
-      line-height: 1;
-      min-width: 70px;
+      font-family: var(--font-display);
+      font-size: 72px;
+      font-weight: 400;
+      line-height: 0.9;
+      min-width: 64px;
       text-align: center;
+      letter-spacing: 0.02em;
     }
-    .rn-label { font-size: 28px; font-weight: 700; color: var(--muted); }
-    .rn-sep   { font-size: 36px; color: var(--border); margin: 0 4px; }
+    .rn-label {
+      font-family: var(--font-display);
+      font-size: 28px;
+      font-weight: 400;
+      color: var(--muted);
+      line-height: 1;
+      padding-bottom: 6px;
+      letter-spacing: 0.04em;
+    }
+    .rn-sep {
+      font-family: var(--font-display);
+      font-size: 40px;
+      color: var(--border);
+      margin: 0 6px;
+      line-height: 0.9;
+      padding-bottom: 4px;
+    }
     .rn-wins   { color: var(--green); }
     .rn-losses { color: var(--red); }
     .rn-draws  { color: var(--yellow); }
@@ -42,46 +86,58 @@
     .record-stats {
       display: flex;
       justify-content: center;
-      gap: 28px;
-      font-size: 15px;
+      align-items: center;
+      gap: 20px;
+      font-family: var(--font-mono);
+      font-size: 12px;
       color: var(--muted);
+      letter-spacing: 0.04em;
     }
-    .record-stats strong { color: var(--text); }
+    .record-stats strong { color: var(--text); font-weight: 700; }
 
     .streak-pill {
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      padding: 4px 14px;
-      border-radius: 20px;
-      font-size: 14px;
+      padding: 3px 10px;
+      border-radius: 3px;
+      font-size: 12px;
       font-weight: 700;
+      font-family: var(--font-mono);
+      letter-spacing: 0.04em;
     }
-    .streak-win  { background: rgba(46,204,113,0.15); color: var(--green); border: 1px solid rgba(46,204,113,0.3); }
-    .streak-loss { background: rgba(231,76,60,0.15);  color: var(--red);   border: 1px solid rgba(231,76,60,0.3); }
-    .streak-draw { background: rgba(240,165,0,0.15);  color: var(--yellow);border: 1px solid rgba(240,165,0,0.3); }
+    .streak-win  { background: color-mix(in srgb, var(--green) 14%, transparent); color: var(--green); border: 1px solid color-mix(in srgb, var(--green) 35%, transparent); }
+    .streak-loss { background: color-mix(in srgb, var(--red) 14%, transparent);  color: var(--red);   border: 1px solid color-mix(in srgb, var(--red) 35%, transparent); }
+    .streak-draw { background: color-mix(in srgb, var(--yellow) 14%, transparent);  color: var(--yellow);border: 1px solid color-mix(in srgb, var(--yellow) 35%, transparent); }
 
     .action-row {
       display: grid;
       grid-template-columns: 1fr 1fr 1fr;
-      gap: 12px;
-      margin-bottom: 16px;
+      gap: 10px;
+      margin-bottom: 14px;
     }
-    .action-row .btn { padding: 22px 10px; font-size: 19px; width: 100%; }
+    .action-row .btn {
+      padding: 18px 10px;
+      font-family: var(--font-display);
+      font-size: 22px;
+      font-weight: 400;
+      letter-spacing: 0.06em;
+      width: 100%;
+      border-radius: 6px;
+    }
 
     .footer-row { display: flex; justify-content: space-between; align-items: center; }
 
     .undo-btn { color: var(--muted); font-size: 13px; }
     .undo-btn:disabled { opacity: 0.3; }
 
-    /* history flash */
     .record-card.added { animation: pulse-green 0.4s ease; }
   </style>
 </head>
 <body>
   <div class="tool-header">
     <h1>W/L Tracker</h1>
-    <span id="totalGames" style="color:var(--muted);font-size:14px;"></span>
+    <span class="tool-meta" id="totalGames"></span>
   </div>
 
   <input type="text" class="game-input" id="gameName" placeholder="Game / Session name (optional)" maxlength="50">
