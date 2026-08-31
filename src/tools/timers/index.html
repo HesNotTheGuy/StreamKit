@@ -7,15 +7,14 @@
   <link rel="stylesheet" href="../../../assets/styles/dashboard.css">
   <script src="../../../assets/js/util.js"></script>
   <style>
-    body { padding: 20px; }
-    .tool-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+    body { }
 
     .timers-list { display: flex; flex-direction: column; gap: 12px; }
 
     .timer-card {
       background: var(--bg2);
       border: 1px solid var(--border);
-      border-radius: 12px;
+      border-radius: var(--radius);
       padding: 16px;
       transition: border-color 0.2s;
     }
@@ -56,9 +55,10 @@
 
     .timer-display {
       text-align: center;
-      font-size: 52px;
-      font-weight: 800;
-      letter-spacing: 2px;
+      font-family: var(--font-display);
+      font-size: 56px;
+      font-weight: 400;
+      letter-spacing: 0.06em;
       line-height: 1;
       margin-bottom: 14px;
       font-variant-numeric: tabular-nums;
@@ -77,11 +77,14 @@
     .add-btn-row { margin-top: 4px; }
   </style>
 </head>
-<body>
-  <div class="tool-header">
-    <h1>Timer Suite</h1>
-    <button class="btn btn-ghost btn-sm" onclick="stopAll()">Stop All</button>
-  </div>
+<body class="tool-page tool-page-flush">
+  <header class="tool-header">
+    <div class="tool-heading">
+      <div class="tool-eyebrow"><span class="sk-mark" aria-hidden="true"><span></span><span></span><span></span></span> StreamKit · Overlay</div>
+      <h1 class="tool-title">Timer Suite</h1>
+    </div>
+    <div class="header-actions"><button class="btn btn-ghost btn-sm" onclick="stopAll()">Stop All</button></div>
+  </header>
 
   <div class="timers-list" id="timersList"></div>
 

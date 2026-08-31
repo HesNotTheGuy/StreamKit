@@ -17,21 +17,6 @@
       justify-content: center;
     }
 
-    .tool-header {
-      display: flex;
-      align-items: baseline;
-      justify-content: space-between;
-      margin-bottom: 18px;
-      gap: 12px;
-    }
-    .tool-header h1 { margin: 0; }
-    .tool-meta {
-      font-family: var(--font-mono);
-      font-size: 11px;
-      color: var(--muted);
-      letter-spacing: 0.06em;
-    }
-
     .game-input {
       font-size: 15px;
       padding: 12px 14px;
@@ -137,10 +122,13 @@
   </style>
 </head>
 <body>
-  <div class="tool-header">
-    <h1>W/L Tracker</h1>
-    <span class="tool-meta" id="totalGames"></span>
-  </div>
+  <header class="tool-header">
+    <div class="tool-heading">
+      <div class="tool-eyebrow"><span class="sk-mark" aria-hidden="true"><span></span><span></span><span></span></span> StreamKit · Overlay</div>
+      <h1 class="tool-title">W/L Tracker</h1>
+      <div class="tool-meta" id="totalGames"></div>
+    </div>
+  </header>
 
   <input type="text" class="game-input" id="gameName" placeholder="Game / Session name (optional)" maxlength="50">
 

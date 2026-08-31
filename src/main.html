@@ -98,6 +98,23 @@
       z-index: 1;
     }
     .brand-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+    .brand-lockup { display: flex; align-items: center; gap: 10px; min-width: 0; }
+    .sk-mark {
+      display: inline-flex;
+      align-items: flex-end;
+      gap: 3px;
+      height: 22px;
+      flex-shrink: 0;
+    }
+    .sk-mark span {
+      display: block;
+      width: 4px;
+      background: var(--accent);
+      border-radius: 1px;
+    }
+    .sk-mark span:nth-child(1) { height: 42%; }
+    .sk-mark span:nth-child(2) { height: 70%; }
+    .sk-mark span:nth-child(3) { height: 100%; }
     .brand-title {
       font-family: var(--font-display);
       font-size: 28px;
@@ -413,7 +430,10 @@
   <aside class="sidebar">
     <div class="sidebar-brand">
       <div class="brand-row">
-        <div class="brand-title">STREAMKIT</div>
+        <div class="brand-lockup">
+          <div class="sk-mark" aria-hidden="true"><span></span><span></span><span></span></div>
+          <div class="brand-title">STREAMKIT</div>
+        </div>
         <div class="live-pill" id="livePill"><div class="live-dot"></div>LIVE</div>
       </div>
       <div class="brand-sub" id="brandSub">local · second monitor</div>

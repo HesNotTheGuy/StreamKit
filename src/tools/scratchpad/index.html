@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="../../../assets/styles/dashboard.css">
   <script src="../../../assets/js/util.js"></script>
   <style>
-    body { padding: 20px; display: flex; flex-direction: column; height: 100vh; box-sizing: border-box; }
+    body.tool-page { display: flex; flex-direction: column; height: 100vh; max-width: none; margin: 0; }
 
     .tool-header {
       display: flex; align-items: center; justify-content: space-between;
@@ -118,21 +118,22 @@
     .pad-textarea.flash { animation: flash-save 0.6s ease; }
   </style>
 </head>
-<body>
-  <div class="tool-header">
-    <div class="header-left">
-      <h1>Scratch Pad</h1>
-      <div class="save-indicator" id="saveIndicator">
+<body class="tool-page tool-page-flush">
+  <header class="tool-header">
+    <div class="tool-heading">
+      <div class="tool-eyebrow"><span class="sk-mark" aria-hidden="true"><span></span><span></span><span></span></span> StreamKit · Notes</div>
+      <h1 class="tool-title">Scratch Pad</h1>
+      <div class="save-indicator tool-meta" id="saveIndicator">
         <div class="save-dot"></div>
         <span id="saveLabel">All saved</span>
       </div>
     </div>
     <div class="header-actions">
-      <button class="btn btn-ghost btn-sm" onclick="toggleSections()" id="sectionsBtn" title="Jump to heading">📑 Headings</button>
-      <button class="btn btn-ghost btn-sm" onclick="copyAll()">📋 Copy All</button>
-      <button class="btn btn-ghost btn-sm" style="color:var(--muted)" onclick="clearPad()">🗑 Clear</button>
+      <button class="btn btn-ghost btn-sm" onclick="toggleSections()" id="sectionsBtn" title="Jump to heading">Headings</button>
+      <button class="btn btn-ghost btn-sm" onclick="copyAll()">Copy All</button>
+      <button class="btn btn-ghost btn-sm" style="color:var(--muted)" onclick="clearPad()">Clear</button>
     </div>
-  </div>
+  </header>
 
   <!-- Headings/sections panel -->
   <div class="sections-panel" id="sectionsPanel"></div>

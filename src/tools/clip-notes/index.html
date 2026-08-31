@@ -7,8 +7,6 @@
   <link rel="stylesheet" href="../../../assets/styles/dashboard.css">
   <script src="../../../assets/js/util.js"></script>
   <style>
-    body { padding: 20px; }
-    .tool-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
 
     /* Twitch clip button */
     .twitch-clip-btn {
@@ -174,13 +172,16 @@
     .mark-btn.flashed { animation: mark-flash 0.3s ease; }
   </style>
 </head>
-<body>
-  <div class="tool-header">
-    <h1>Clip Notes</h1>
-    <button class="twitch-clip-btn" id="twitchClipBtn" onclick="createTwitchClip()">
-      🎬 Create Twitch Clip
-    </button>
-  </div>
+<body class="tool-page tool-page-flush">
+  <header class="tool-header">
+    <div class="tool-heading">
+      <div class="tool-eyebrow"><span class="sk-mark" aria-hidden="true"><span></span><span></span><span></span></span> StreamKit · Capture</div>
+      <h1 class="tool-title">Clip Notes</h1>
+    </div>
+    <div class="header-actions">
+      <button class="twitch-clip-btn" id="twitchClipBtn" onclick="createTwitchClip()">Create Twitch Clip</button>
+    </div>
+  </header>
   <div class="clip-result-toast" id="clipToast">
     ✅ Clip created! <a id="clipLink" href="#" target="_blank">View clip ↗</a>
   </div>

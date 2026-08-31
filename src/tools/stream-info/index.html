@@ -7,9 +7,6 @@
   <link rel="stylesheet" href="../../../assets/styles/dashboard.css">
   <script src="../../../assets/js/util.js"></script>
   <style>
-    body { padding: 20px; }
-
-    .tool-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
 
     /* Not-connected state */
     .no-auth {
@@ -235,7 +232,7 @@
     .recent-title:hover .rt-arrow { opacity: 1; }
   </style>
 </head>
-<body>
+<body class="tool-page tool-page-flush">
 
   <!-- Not connected -->
   <div class="no-auth" id="noAuth">
@@ -262,10 +259,15 @@
 
   <!-- Form -->
   <div id="mainForm">
-    <div class="tool-header">
-      <h1>Stream Info</h1>
-      <button class="btn btn-ghost btn-sm" onclick="refreshFromAPI()" id="refreshBtn">↻ Refresh</button>
+  <header class="tool-header">
+    <div class="tool-heading">
+      <div class="tool-eyebrow"><span class="sk-mark" aria-hidden="true"><span></span><span></span><span></span></span> StreamKit · Twitch</div>
+      <h1 class="tool-title">Stream Info</h1>
     </div>
+    <div class="header-actions">
+      <button class="btn btn-ghost btn-sm" onclick="refreshFromAPI()" id="refreshBtn">Refresh</button>
+    </div>
+  </header>
     <div style="font-size:13px;color:var(--muted);margin-bottom:20px">
       Update your stream title, category, and tags — changes go live instantly on Twitch.
     </div>

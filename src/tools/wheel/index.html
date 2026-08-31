@@ -7,9 +7,6 @@
   <link rel="stylesheet" href="../../../assets/styles/dashboard.css">
   <script src="../../../assets/js/util.js"></script>
   <style>
-    body { padding: 24px; max-width: 720px; }
-    .tool-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
-    .tool-header h1 { margin: 0; }
     #countLabel { color: var(--muted); font-size: 14px; }
 
     .wheel-layout { display: grid; grid-template-columns: 320px 1fr; gap: 24px; align-items: start; }
@@ -39,12 +36,12 @@
       border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--border));
       display: flex; align-items: center; justify-content: center;
       z-index: 2; cursor: pointer;
-      box-shadow: 0 0 0 4px rgba(0,0,0,0.25), 0 0 18px color-mix(in srgb, var(--accent) 30%, transparent);
+      box-shadow: 0 0 0 3px rgba(0,0,0,0.25);
       transition: transform 0.12s, box-shadow 0.2s;
-      font-size: 11px; font-weight: 800; letter-spacing: 0.5px; color: var(--accent);
+      font-family: var(--font-display); font-size: 14px; font-weight: 400; letter-spacing: 0.08em; color: var(--accent);
       text-transform: uppercase;
     }
-    .wheel-hub:hover { transform: translate(-50%,-50%) scale(1.06); box-shadow: 0 0 0 4px rgba(0,0,0,0.25), 0 0 26px color-mix(in srgb, var(--accent) 55%, transparent); }
+    .wheel-hub:hover { transform: translate(-50%,-50%) scale(1.06); box-shadow: 0 0 0 3px rgba(0,0,0,0.25); }
     .wheel-hub:active { transform: translate(-50%,-50%) scale(0.96); }
     .wheel-hub.disabled { opacity: 0.4; pointer-events: none; }
 
@@ -110,11 +107,14 @@
     .obs-link-row { margin-top: 22px; }
   </style>
 </head>
-<body>
-  <div class="tool-header">
-    <h1>Wheel</h1>
-    <span id="countLabel"></span>
-  </div>
+<body class="tool-page">
+  <header class="tool-header">
+    <div class="tool-heading">
+      <div class="tool-eyebrow"><span class="sk-mark" aria-hidden="true"><span></span><span></span><span></span></span> StreamKit · Overlay</div>
+      <h1 class="tool-title">Wheel</h1>
+      <div class="tool-meta" id="countLabel"></div>
+    </div>
+  </header>
 
   <div class="wheel-layout">
     <!-- Wheel -->
@@ -126,7 +126,7 @@
         <div class="wheel-hub disabled" id="wheelHub" onclick="spin()">Spin</div>
       </div>
       <div class="spin-btn-row">
-        <button class="btn btn-primary btn-lg" id="spinBtn" onclick="spin()" style="flex:1">🎡 Spin</button>
+        <button class="btn btn-primary btn-lg" id="spinBtn" onclick="spin()" style="flex:1">Spin</button>
       </div>
     </div>
 
@@ -145,7 +145,7 @@
           <label class="toggle-switch"><input type="checkbox" id="removeWinner" onchange="saveState()"><span class="toggle-track"></span></label>
         </div>
         <div class="ctl-row">
-          <button class="btn btn-ghost btn-sm" onclick="shuffle()">🔀 Shuffle</button>
+          <button class="btn btn-ghost btn-sm" onclick="shuffle()">Shuffle</button>
           <button class="btn btn-ghost btn-sm" onclick="clearAll()">Clear all</button>
         </div>
         <div class="bulk-row">
@@ -157,7 +157,7 @@
   </div>
 
   <div class="obs-link-row">
-    <button class="btn-copy-obs" id="copyOBSBtn" onclick="copyOBSLink()">📋 Copy OBS Browser Source URL</button>
+    <button class="btn-copy-obs" id="copyOBSBtn" onclick="copyOBSLink()">Copy OBS Browser Source URL</button>
   </div>
 
   <!-- Winner modal -->

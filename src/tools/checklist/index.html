@@ -7,9 +7,6 @@
   <link rel="stylesheet" href="../../../assets/styles/dashboard.css">
   <script src="../../../assets/js/util.js"></script>
   <style>
-    body { padding: 20px; }
-
-    .tool-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
 
     .sections { display: flex; flex-direction: column; gap: 20px; }
 
@@ -20,7 +17,7 @@
       justify-content: space-between;
       margin-bottom: 10px;
     }
-    .section-title { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 1.2px; }
+    /* section labels use .sk-section-label */
     .section-progress { font-size: 12px; color: var(--muted); }
 
     .task-list { display: flex; flex-direction: column; gap: 4px; }
@@ -56,7 +53,7 @@
       font-size: 11px;
       color: var(--muted);
       padding: 2px 8px;
-      border-radius: 10px;
+      border-radius: 3px;
       background: var(--bg2);
       white-space: nowrap;
       cursor: pointer;
@@ -111,16 +108,21 @@
     .modal-row { display: flex; gap: 10px; align-items: center; margin-top: 12px; }
   </style>
 </head>
-<body>
-  <div class="tool-header">
-    <h1>Stream Checklist</h1>
-    <button class="btn btn-ghost btn-sm" onclick="resetAll()">Reset All</button>
-  </div>
+<body class="tool-page tool-page-flush">
+  <header class="tool-header">
+    <div class="tool-heading">
+      <div class="tool-eyebrow"><span class="sk-mark" aria-hidden="true"><span></span><span></span><span></span></span> StreamKit · Prep</div>
+      <h1 class="tool-title">Stream Checklist</h1>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-ghost btn-sm" onclick="resetAll()">Reset All</button>
+    </div>
+  </header>
 
   <div class="sections">
     <div class="card section-card" id="sec-pre">
       <div class="section-header">
-        <span class="section-title">🟢 Pre-Stream</span>
+        <span class="sk-section-label">Pre-Stream</span>
         <span class="section-progress" id="prog-pre"></span>
       </div>
       <div class="task-list" id="list-pre"></div>
@@ -131,7 +133,7 @@
 
     <div class="card section-card" id="sec-mid">
       <div class="section-header">
-        <span class="section-title">🔴 Mid-Stream</span>
+        <span class="sk-section-label">Mid-Stream</span>
         <span class="section-progress" id="prog-mid"></span>
       </div>
       <div class="task-list" id="list-mid"></div>
@@ -142,7 +144,7 @@
 
     <div class="card section-card" id="sec-post">
       <div class="section-header">
-        <span class="section-title">⚫ Post-Stream</span>
+        <span class="sk-section-label">Post-Stream</span>
         <span class="section-progress" id="prog-post"></span>
       </div>
       <div class="task-list" id="list-post"></div>

@@ -7,8 +7,6 @@
   <link rel="stylesheet" href="../../../assets/styles/dashboard.css">
   <script src="../../../assets/js/util.js"></script>
   <style>
-    body { padding: 20px; }
-    .tool-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
 
     /* Current / Next */
     .now-next { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
@@ -74,11 +72,14 @@
     .empty-queue { color: var(--muted); text-align: center; padding: 24px; font-size: 15px; }
   </style>
 </head>
-<body>
-  <div class="tool-header">
-    <h1>Viewer Queue</h1>
-    <span id="queueCountBadge" style="color:var(--muted);font-size:14px"></span>
-  </div>
+<body class="tool-page tool-page-flush">
+  <header class="tool-header">
+    <div class="tool-heading">
+      <div class="tool-eyebrow"><span class="sk-mark" aria-hidden="true"><span></span><span></span><span></span></span> StreamKit · Lobby</div>
+      <h1 class="tool-title">Viewer Queue</h1>
+      <div class="tool-meta" id="queueCountBadge"></div>
+    </div>
+  </header>
 
   <div class="now-next">
     <div class="slot now">

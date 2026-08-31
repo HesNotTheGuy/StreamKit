@@ -7,10 +7,6 @@
   <link rel="stylesheet" href="../../../assets/styles/dashboard.css">
   <script src="../../../assets/js/util.js"></script>
   <style>
-    body { padding: 24px; max-width: 560px; }
-
-    .tool-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
-    .tool-header h1 { margin: 0; }
 
     /* ── Add message form ── */
     .add-card {
@@ -98,12 +94,15 @@
     .av-7 { background: #e74c3c; }
   </style>
 </head>
-<body>
+<body class="tool-page tool-page-narrow">
 
-  <div class="tool-header">
-    <h1>Chat Wall</h1>
-    <span id="countLabel" style="color:var(--muted);font-size:14px"></span>
-  </div>
+  <header class="tool-header">
+    <div class="tool-heading">
+      <div class="tool-eyebrow"><span class="sk-mark" aria-hidden="true"><span></span><span></span><span></span></span> StreamKit · Overlay</div>
+      <h1 class="tool-title">Chat Wall</h1>
+      <div class="tool-meta" id="countLabel"></div>
+    </div>
+  </header>
 
   <div class="add-card">
     <div class="add-row">
