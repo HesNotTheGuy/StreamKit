@@ -7,9 +7,8 @@
   <link rel="stylesheet" href="../../../assets/styles/dashboard.css">
   <script src="../../../assets/js/util.js"></script>
   <style>
-    body { padding: 20px; }
 
-    .tool-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+    /* tool-header uses shared brand kit */
     .header-right { display: flex; align-items: center; gap: 10px; }
 
     /* Connection status */
@@ -75,7 +74,7 @@
       padding: 14px 16px;
       text-align: center;
     }
-    .stat-value { font-size: 28px; font-weight: 800; color: var(--text); line-height: 1; }
+    .stat-value { font-family: var(--font-display); letter-spacing: 0.04em; font-size: 28px; font-weight: 800; color: var(--text); line-height: 1; }
     .stat-label { font-size: 12px; color: var(--muted); margin-top: 4px; }
 
     /* Manual add */
@@ -153,7 +152,7 @@
     .empty-state { text-align: center; padding: 50px 20px; color: var(--muted); font-size: 15px; }
   </style>
 </head>
-<body>
+<body class="tool-page tool-page-flush">
 
   <!-- Twitch not connected notice -->
   <div class="setup-notice" id="setupNotice">
@@ -168,15 +167,18 @@
 
   <!-- Main content -->
   <div id="mainContent">
-    <div class="tool-header">
-      <h1>Raid Tracker</h1>
-      <div class="header-right">
-        <div class="irc-status" id="ircStatus">
-          <div class="irc-dot"></div>
-          <span id="ircStatusText">Disconnected</span>
-        </div>
+  <header class="tool-header">
+    <div class="tool-heading">
+      <div class="tool-eyebrow"><span class="sk-mark" aria-hidden="true"><span></span><span></span><span></span></span> StreamKit · Twitch</div>
+      <h1 class="tool-title">Raid Tracker</h1>
+    </div>
+    <div class="header-actions">
+      <div class="irc-status" id="ircStatus">
+        <div class="irc-dot"></div>
+        <span id="ircStatusText">Disconnected</span>
       </div>
     </div>
+  </header>
 
     <!-- Channel bar -->
     <div class="channel-bar" id="channelBar">

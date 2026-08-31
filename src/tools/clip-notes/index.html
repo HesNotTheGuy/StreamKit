@@ -7,8 +7,6 @@
   <link rel="stylesheet" href="../../../assets/styles/dashboard.css">
   <script src="../../../assets/js/util.js"></script>
   <style>
-    body { padding: 20px; }
-    .tool-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
 
     /* Twitch clip button */
     .twitch-clip-btn {
@@ -159,7 +157,7 @@
       funny:    '#f0a500',
       hype:     '#2ecc71',
       rage:     '#e74c3c',
-      clip:     '#7c6af7',
+      clip:     '#2fd4a9',
       moment:   '#3498db',
       fail:     '#e67e22'
     }
@@ -174,13 +172,16 @@
     .mark-btn.flashed { animation: mark-flash 0.3s ease; }
   </style>
 </head>
-<body>
-  <div class="tool-header">
-    <h1>Clip Notes</h1>
-    <button class="twitch-clip-btn" id="twitchClipBtn" onclick="createTwitchClip()">
-      🎬 Create Twitch Clip
-    </button>
-  </div>
+<body class="tool-page tool-page-flush">
+  <header class="tool-header">
+    <div class="tool-heading">
+      <div class="tool-eyebrow"><span class="sk-mark" aria-hidden="true"><span></span><span></span><span></span></span> StreamKit · Capture</div>
+      <h1 class="tool-title">Clip Notes</h1>
+    </div>
+    <div class="header-actions">
+      <button class="twitch-clip-btn" id="twitchClipBtn" onclick="createTwitchClip()">Create Twitch Clip</button>
+    </div>
+  </header>
   <div class="clip-result-toast" id="clipToast">
     ✅ Clip created! <a id="clipLink" href="#" target="_blank">View clip ↗</a>
   </div>
@@ -220,7 +221,7 @@
       funny:  { bg: 'rgba(240,165,0,0.15)',   color: '#f0a500' },
       hype:   { bg: 'rgba(46,204,113,0.15)',   color: '#2ecc71' },
       rage:   { bg: 'rgba(231,76,60,0.15)',    color: '#e74c3c' },
-      clip:   { bg: 'rgba(124,106,247,0.15)',  color: '#7c6af7' },
+      clip:   { bg: 'rgba(47,212,169,0.15)',  color: '#2fd4a9' },
       moment: { bg: 'rgba(52,152,219,0.15)',   color: '#3498db' },
       fail:   { bg: 'rgba(230,126,34,0.15)',   color: '#e67e22' },
     };
@@ -348,7 +349,7 @@
       list.querySelectorAll('.clip-item').forEach(el => el.remove());
 
       clips.forEach(c => {
-        const colors = TAG_COLORS[c.tag] || { bg: 'rgba(124,106,247,0.15)', color: '#7c6af7' };
+        const colors = TAG_COLORS[c.tag] || { bg: 'rgba(47,212,169,0.15)', color: '#2fd4a9' };
         const div = document.createElement('div');
         div.className = 'clip-item';
         div.innerHTML = `

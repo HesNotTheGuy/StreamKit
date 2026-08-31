@@ -12,7 +12,7 @@
       flex-direction: column;
       gap: 4px;
       padding: 10px 14px;
-      --chrome: #7c6af7; /* overridden per-render from saved style */
+      --chrome: #2fd4a9; /* overridden per-render from saved style */
     }
 
     /* ── Backgrounds ── */
@@ -183,7 +183,7 @@
       font: 'system', colorW: '#2ecc71', colorL: '#e74c3c', colorD: '#f0a500',
       showDraws: true, showWinRate: true, showStreak: true,
       layout: 'horizontal', background: 'none', size: 'md',
-      effect: 'none', chromeColor: '#7c6af7',
+      effect: 'none', chromeColor: '#2fd4a9',
     };
 
     function getStyle() {
@@ -212,7 +212,7 @@
       const eff  = s.effect || 'none';
       wrap.className = `wl-wrap layout-${s.layout||'horizontal'} bg-${s.background||'none'} size-${s.size||'md'} effect-${eff}`;
       wrap.style.fontFamily = StreamKit.FONT_CSS[s.font] || StreamKit.FONT_CSS.system;
-      wrap.style.setProperty('--chrome', s.chromeColor || '#7c6af7');
+      wrap.style.setProperty('--chrome', s.chromeColor || '#2fd4a9');
 
       // Game label
       const gameLblHtml = data.game

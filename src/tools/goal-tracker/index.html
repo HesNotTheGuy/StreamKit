@@ -7,10 +7,7 @@
   <link rel="stylesheet" href="../../../assets/styles/dashboard.css">
   <script src="../../../assets/js/util.js"></script>
   <style>
-    body { padding: 20px; }
-    .tool-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
-    .tool-header .header-actions { display: flex; gap: 8px; }
-
+    
     .goals-list { display: flex; flex-direction: column; gap: 16px; }
 
     .goal-card { position: relative; }
@@ -42,8 +39,8 @@
     .goal-del:hover { color: var(--red); }
 
     .goal-progress-row { margin-bottom: 10px; }
-    .progress-track { height: 20px; border-radius: 10px; }
-    .progress-fill { border-radius: 10px; }
+    .progress-track { height: 12px; border-radius: 2px; }
+    .progress-fill { border-radius: 1px; }
 
     .goal-numbers {
       display: flex;
@@ -68,11 +65,11 @@
       display: inline-flex; align-items: center; gap: 5px;
       font-size: 12px; font-weight: 800; letter-spacing: 0.4px;
       color: var(--green);
-      padding: 4px 8px; border-radius: 8px;
-      background: rgba(46,204,113,0.12); border: 1px solid rgba(46,204,113,0.3);
+      padding: 4px 8px; border-radius: 3px;
+      background: color-mix(in srgb, var(--green) 12%, transparent); border: 1px solid color-mix(in srgb, var(--green) 30%, transparent);
     }
     .live-tag::before {
-      content: ''; width: 7px; height: 7px; border-radius: 50%;
+      content: ''; width: 7px; height: 7px; border-radius: 1px;
       background: var(--green); animation: pulse-green 1.6s infinite;
     }
 
@@ -103,18 +100,23 @@
     .live-note strong { color: var(--text); }
   </style>
 </head>
-<body>
-  <div class="tool-header">
-    <h1>Goal Tracker</h1>
-    <div class="header-actions">
-      <button class="btn btn-ghost btn-sm" onclick="resetSession()" title="Zero the live session counters">↻ Reset session</button>
-      <button class="btn btn-primary" onclick="addGoal()">+ New Goal</button>
+<body class="tool-page tool-page-flush" class="tool-page tool-page-flush">
+  <header class="tool-header">
+    <div class="tool-heading">
+      <div class="tool-eyebrow"><span class="sk-mark" aria-hidden="true"><span></span><span></span><span></span></span> StreamKit · Overlay</div>
+      <h1 class="tool-title">Goal Tracker</h1>
     </div>
-  </div>
+    <div class="header-actions">
+      <button class="btn btn-ghost btn-sm" onclick="resetSession()" title="Zero the live session counters">Reset session</button>
+      <button class="btn btn-primary btn-sm" onclick="addGoal()">+ New Goal</button>
+    </div>
+  </header>
 
   <div class="goals-list" id="goalsList">
-    <div class="empty-state" id="emptyState">
-      No goals yet — click <strong>+ New Goal</strong> to get started.
+    <div class="sk-empty" id="emptyState">
+      <div class="sk-empty-mark"><span class="sk-mark" aria-hidden="true"><span></span><span></span><span></span></span></div>
+      <div class="sk-empty-title">No goals yet</div>
+      <div class="sk-empty-sub">Add a goal to track follows, subs, bits, or a custom target on stream.</div>
     </div>
   </div>
 
@@ -297,7 +299,7 @@
       <div class="style-section-label">Colors</div>
       <div class="color-row">
         <div class="color-swatch"><label>Progress Bar</label>
-          <input type="color" id="colorBar" value="#7c6af7" oninput="saveOvStyle()"></div>
+          <input type="color" id="colorBar" value="#2fd4a9" oninput="saveOvStyle()"></div>
         <div class="color-swatch"><label>Goal Reached</label>
           <input type="color" id="colorComplete" value="#2ecc71" oninput="saveOvStyle()"></div>
       </div>
@@ -321,7 +323,7 @@
 
   <script>
     const OV_KEY  = 'streamkit_overlay_goals';
-    const OV_DEFS = { font: 'system', colorBar: '#7c6af7', colorComplete: '#2ecc71' };
+    const OV_DEFS = { font: 'system', colorBar: '#2fd4a9', colorComplete: '#2ecc71' };
 
     let currentOvFont = 'system';
     function getOvStyle() {
@@ -359,7 +361,7 @@
     function loadOvStyle() {
       const s = getOvStyle();
       currentOvFont = s.font || 'system';
-      document.getElementById('colorBar').value      = s.colorBar      || '#7c6af7';
+      document.getElementById('colorBar').value      = s.colorBar      || '#2fd4a9';
       document.getElementById('colorComplete').value = s.colorComplete || '#2ecc71';
       buildFontGrid();
       updatePreview(s);

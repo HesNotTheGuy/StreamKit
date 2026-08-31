@@ -7,7 +7,6 @@
   <link rel="stylesheet" href="../../../assets/styles/dashboard.css">
   <script src="../../../assets/js/util.js"></script>
   <style>
-    body { padding: 20px; max-width: 560px; }
 
     /* ── Spotify green ── */
     :root { --spotify: #1db954; --spotify-dark: #158a3e; }
@@ -18,12 +17,13 @@
     .setup-card { display: flex; flex-direction: column; gap: 20px; }
     .step { display: flex; gap: 14px; align-items: flex-start; }
     .step-num {
-      width: 28px; height: 28px;
-      border-radius: 50%;
+      width: 22px; height: 22px;
+      border-radius: 3px;
       background: var(--accent);
-      color: #fff;
-      font-weight: 800;
-      font-size: 13px;
+      color: #061410;
+      font-family: var(--font-mono);
+      font-weight: 700;
+      font-size: 11px;
       display: flex; align-items: center; justify-content: center;
       flex-shrink: 0;
       margin-top: 2px;
@@ -201,14 +201,16 @@
     @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 </head>
-<body>
+<body class="tool-page tool-page-narrow">
 
   <!-- ═══ SETUP VIEW ═══ -->
   <div id="setupView">
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
-      <h1>Spotify</h1>
-      <span style="font-size:20px">🎵</span>
+  <header class="tool-header">
+    <div class="tool-heading">
+      <div class="tool-eyebrow"><span class="sk-mark" aria-hidden="true"><span></span><span></span><span></span></span> StreamKit · Overlay</div>
+      <h1 class="tool-title">Spotify</h1>
     </div>
+  </header>
     <div class="card setup-card">
 
       <div class="step">
@@ -257,13 +259,16 @@
 
   <!-- ═══ CONNECTED VIEW ═══ -->
   <div id="mainView" style="display:none">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-      <div style="display:flex;align-items:center;gap:10px">
-        <h1>Spotify</h1>
-        <span id="npBadge" class="np-badge paused">⏸ Paused</span>
+    <header class="tool-header">
+      <div class="tool-heading">
+        <div class="tool-eyebrow"><span class="sk-mark" aria-hidden="true"><span></span><span></span><span></span></span> StreamKit · Overlay</div>
+        <h1 class="tool-title">Spotify</h1>
+        <div class="tool-meta"><span id="npBadge" class="np-badge paused">Paused</span></div>
       </div>
-      <button class="btn btn-ghost btn-sm" onclick="disconnectSpotify()">Disconnect</button>
-    </div>
+      <div class="header-actions">
+        <button class="btn btn-ghost btn-sm" onclick="disconnectSpotify()">Disconnect</button>
+      </div>
+    </header>
 
     <div class="main-view">
 
@@ -535,7 +540,7 @@
       document.getElementById('npPos').textContent = fmt(np.progress);
       document.getElementById('npDur').textContent = fmt(np.duration);
       document.getElementById('playPauseBtn').textContent = np.isPlaying ? '⏸' : '▶';
-      badge.textContent = np.isPlaying ? '♫ Playing' : '⏸ Paused';
+      badge.textContent = np.isPlaying ? 'Playing' : 'Paused';
       badge.className   = 'np-badge' + (np.isPlaying ? '' : ' paused');
     }
 
@@ -988,7 +993,7 @@
     <div class="style-section">
       <div class="style-section-label">Preview</div>
       <div class="spotify-preview-box" id="previewBox">
-        <div class="pv-art">🎵</div>
+        <div class="pv-art">SK</div>
         <div class="pv-info">
           <div class="pv-eq">
             <div class="pv-bar" id="pvBar1"></div>

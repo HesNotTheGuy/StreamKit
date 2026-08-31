@@ -7,7 +7,6 @@
   <link rel="stylesheet" href="../../../assets/styles/dashboard.css">
   <script src="../../../assets/js/util.js"></script>
   <style>
-    body { padding: 20px; }
 
     .tabs {
       display: flex;
@@ -17,11 +16,14 @@
       padding-bottom: 0;
     }
     .tab {
-      padding: 10px 20px;
+      padding: 10px 16px;
       cursor: pointer;
-      border-radius: 8px 8px 0 0;
-      font-weight: 600;
-      font-size: 15px;
+      border-radius: 0;
+      font-family: var(--font-mono);
+      font-weight: 700;
+      font-size: 12px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
       color: var(--muted);
       border: none;
       background: none;
@@ -72,7 +74,7 @@
     .poll-result-banner {
       text-align: center;
       padding: 20px;
-      background: rgba(124,106,247,0.1);
+      background: rgba(47,212,169,0.1);
       border: 1px solid var(--accent);
       border-radius: 10px;
       animation: pop-in 0.3s ease;
@@ -132,13 +134,18 @@
     .answer-hidden:hover { filter: blur(3px); }
   </style>
 </head>
-<body>
-  <h1 style="margin-bottom:16px">Chat Mini-Games</h1>
+<body class="tool-page tool-page-flush">
+  <header class="tool-header">
+    <div class="tool-heading">
+      <div class="tool-eyebrow"><span class="sk-mark" aria-hidden="true"><span></span><span></span><span></span></span> StreamKit · Overlay</div>
+      <h1 class="tool-title">Mini-Games</h1>
+    </div>
+  </header>
 
   <div class="tabs">
-    <button class="tab active" onclick="switchTab('poll')">📊 Poll</button>
-    <button class="tab" onclick="switchTab('battle')">⚔️ Team Battle</button>
-    <button class="tab" onclick="switchTab('trivia')">🧠 Trivia</button>
+    <button class="tab active" onclick="switchTab('poll')">Poll</button>
+    <button class="tab" onclick="switchTab('battle')">Team Battle</button>
+    <button class="tab" onclick="switchTab('trivia')">Trivia</button>
   </div>
 
   <!-- ═══ POLL ═══ -->

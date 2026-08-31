@@ -7,9 +7,6 @@
   <link rel="stylesheet" href="../../../assets/styles/dashboard.css">
   <script src="../../../assets/js/util.js"></script>
   <style>
-    body { padding: 20px; }
-
-    .tool-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
 
     /* Not-connected state */
     .no-auth {
@@ -134,7 +131,7 @@
       gap: 10px;
       padding: 10px 12px;
       background: var(--bg2);
-      border: 1px solid rgba(124,106,247,0.3);
+      border: 1px solid rgba(47,212,169,0.3);
       border-radius: 8px;
     }
     .game-selected.show { display: flex; }
@@ -161,8 +158,8 @@
     .tag-pill {
       display: flex; align-items: center; gap: 5px;
       padding: 3px 10px;
-      background: rgba(124,106,247,0.15);
-      border: 1px solid rgba(124,106,247,0.3);
+      background: rgba(47,212,169,0.15);
+      border: 1px solid rgba(47,212,169,0.3);
       border-radius: 20px;
       font-size: 13px; color: var(--accent); font-weight: 600;
     }
@@ -192,7 +189,7 @@
       cursor: pointer;
       transition: all 0.15s;
     }
-    .preset-tag:hover { border-color: var(--accent); color: var(--accent); background: rgba(124,106,247,0.08); }
+    .preset-tag:hover { border-color: var(--accent); color: var(--accent); background: rgba(47,212,169,0.08); }
 
     /* Action row */
     .action-row {
@@ -230,12 +227,12 @@
       transition: background 0.1s;
       color: var(--muted);
     }
-    .recent-title:hover { background: rgba(124,106,247,0.1); color: var(--text); }
+    .recent-title:hover { background: rgba(47,212,169,0.1); color: var(--text); }
     .recent-title .rt-arrow { margin-left: auto; opacity: 0; transition: opacity 0.15s; font-size: 11px; }
     .recent-title:hover .rt-arrow { opacity: 1; }
   </style>
 </head>
-<body>
+<body class="tool-page tool-page-flush">
 
   <!-- Not connected -->
   <div class="no-auth" id="noAuth">
@@ -262,10 +259,15 @@
 
   <!-- Form -->
   <div id="mainForm">
-    <div class="tool-header">
-      <h1>Stream Info</h1>
-      <button class="btn btn-ghost btn-sm" onclick="refreshFromAPI()" id="refreshBtn">↻ Refresh</button>
+  <header class="tool-header">
+    <div class="tool-heading">
+      <div class="tool-eyebrow"><span class="sk-mark" aria-hidden="true"><span></span><span></span><span></span></span> StreamKit · Twitch</div>
+      <h1 class="tool-title">Stream Info</h1>
     </div>
+    <div class="header-actions">
+      <button class="btn btn-ghost btn-sm" onclick="refreshFromAPI()" id="refreshBtn">Refresh</button>
+    </div>
+  </header>
     <div style="font-size:13px;color:var(--muted);margin-bottom:20px">
       Update your stream title, category, and tags — changes go live instantly on Twitch.
     </div>

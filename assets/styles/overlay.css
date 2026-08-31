@@ -5,12 +5,19 @@
   font-style: normal;
   font-display: swap;
 }
+@font-face {
+  font-family: 'Space Grotesk';
+  src: url('../fonts/SpaceGrotesk-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
   background: transparent;
-  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-family: 'Space Grotesk', 'Segoe UI', system-ui, sans-serif;
   overflow: hidden;
 }
 
@@ -69,7 +76,7 @@ body {
   height: 100%;
   border-radius: 7px;
   transition: width 0.4s ease;
-  background: #7c6af7;
+  background: #2fd4a9;
 }
 .ov-progress-fill.complete { background: #2ecc71; }
 

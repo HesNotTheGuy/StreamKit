@@ -7,10 +7,6 @@
   <link rel="stylesheet" href="../../../assets/styles/dashboard.css">
   <script src="../../../assets/js/util.js"></script>
   <style>
-    body { padding: 24px; max-width: 560px; }
-
-    .tool-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
-    .tool-header h1 { margin: 0; }
 
     /* ── Add message form ── */
     .add-card {
@@ -85,10 +81,10 @@
       border: 1px solid var(--border); background: var(--bg3); color: var(--muted);
       cursor: pointer; font-family: inherit; transition: all 0.15s;
     }
-    .mode-btn.active { border-color: var(--accent); background: rgba(124,106,247,0.12); color: var(--text); }
+    .mode-btn.active { border-color: var(--accent); background: rgba(47,212,169,0.12); color: var(--text); }
 
     /* avatar colors by first char */
-    .av-0 { background: #7c6af7; }
+    .av-0 { background: #2fd4a9; }
     .av-1 { background: #3b9ef5; }
     .av-2 { background: #e8733a; }
     .av-3 { background: #3dba72; }
@@ -98,12 +94,15 @@
     .av-7 { background: #e74c3c; }
   </style>
 </head>
-<body>
+<body class="tool-page tool-page-narrow">
 
-  <div class="tool-header">
-    <h1>Chat Wall</h1>
-    <span id="countLabel" style="color:var(--muted);font-size:14px"></span>
-  </div>
+  <header class="tool-header">
+    <div class="tool-heading">
+      <div class="tool-eyebrow"><span class="sk-mark" aria-hidden="true"><span></span><span></span><span></span></span> StreamKit · Overlay</div>
+      <h1 class="tool-title">Chat Wall</h1>
+      <div class="tool-meta" id="countLabel"></div>
+    </div>
+  </header>
 
   <div class="add-card">
     <div class="add-row">

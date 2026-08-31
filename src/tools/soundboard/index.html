@@ -7,8 +7,6 @@
   <link rel="stylesheet" href="../../../assets/styles/dashboard.css">
   <script src="../../../assets/js/util.js"></script>
   <style>
-    body { padding: 20px; }
-    .tool-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
 
     .toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 16px; flex-wrap: wrap; }
     .toolbar .volume-row { display: flex; align-items: center; gap: 8px; }
@@ -30,17 +28,16 @@
       padding: 18px 10px 14px;
       background: var(--bg2);
       border: 2px solid var(--border);
-      border-radius: 10px;
+      border-radius: var(--radius);
       cursor: pointer;
       transition: border-color 0.15s, background 0.15s;
       min-height: 90px;
     }
     .sound-btn:hover { border-color: var(--accent); background: var(--bg3); }
-    .sound-btn.playing { border-color: var(--green); background: rgba(46,204,113,0.08); }
+    .sound-btn.playing { border-color: var(--green); background: color-mix(in srgb, var(--green) 8%, transparent); }
     .sound-btn.empty { border-style: dashed; border-color: var(--border); opacity: 0.5; }
     .sound-btn.empty:hover { opacity: 1; border-color: var(--accent); }
 
-    .sound-icon { font-size: 26px; line-height: 1; }
     .sound-label {
       font-size: 13px;
       font-weight: 700;
@@ -54,9 +51,16 @@
     .key-hint {
       position: absolute;
       top: 5px; left: 7px;
-      font-size: 9px; font-weight: 800;
-      color: var(--muted); opacity: 0.6;
-      letter-spacing: 0.3px;
+      font-family: var(--font-mono);
+      font-size: 9px; font-weight: 700;
+      color: var(--muted); opacity: 0.7;
+      letter-spacing: 0.06em;
+    }
+    .sound-icon {
+      font-family: var(--font-display);
+      font-size: 28px;
+      letter-spacing: 0.04em;
+      color: var(--accent);
     }
 
     .edit-btn {
@@ -89,13 +93,13 @@
     .modal {
       background: var(--bg2);
       border: 1px solid var(--border);
-      border-radius: 14px;
+      border-radius: var(--radius);
       padding: 24px;
       width: 340px;
     }
     .modal h2 { margin-bottom: 16px; }
     .modal-field { margin-bottom: 14px; }
-    .modal-field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.8px; }
+    .modal-field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.08em; font-family: var(--font-mono); font-size: 10px; }
     .modal-row { display: flex; gap: 10px; justify-content: flex-end; margin-top: 16px; }
 
     .icon-picker { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
@@ -133,11 +137,16 @@
     }
   </style>
 </head>
-<body>
-  <div class="tool-header">
-    <h1>Soundboard</h1>
-    <button class="btn btn-ghost btn-sm stop-all-btn" onclick="stopAll()">⏹ Stop All</button>
-  </div>
+<body class="tool-page tool-page-flush">
+  <header class="tool-header">
+    <div class="tool-heading">
+      <div class="tool-eyebrow"><span class="sk-mark" aria-hidden="true"><span></span><span></span><span></span></span> StreamKit · Audio</div>
+      <h1 class="tool-title">Soundboard</h1>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-ghost btn-sm stop-all-btn" onclick="stopAll()">Stop All</button>
+    </div>
+  </header>
 
   <div class="toolbar">
     <div class="volume-row">
@@ -162,7 +171,7 @@
         <label>Sound File</label>
         <div style="display:flex;gap:6px;align-items:center">
           <input type="text" id="editFile" placeholder="filename.mp3" style="flex:1">
-          <button class="btn btn-ghost btn-sm" onclick="triggerFilePick()" style="white-space:nowrap;flex-shrink:0">📂 Browse…</button>
+          <button class="btn btn-ghost btn-sm" onclick="triggerFilePick()" style="white-space:nowrap;flex-shrink:0">Browse…</button>
           <input type="file" id="filePickInput" accept="audio/*" style="display:none" onchange="handleFilePick(this)">
         </div>
         <div class="path-hint" id="filePathHint">Filename relative to <code>assets/sounds/</code> — or click Browse to import a file from your computer</div>
@@ -190,7 +199,7 @@
   <script>
     const KEY = 'streamkit_soundboard';
     const SOUNDS_PATH = '../../../assets/sounds/';
-    const SOUND_ICONS = ['🔊','🎵','🎶','🎺','🥁','🎸','🎤','🔔','⚡','💥','🎯','😂','😱','🏆','🎊','💀','🔥','❤️','👋','🤣'];
+    const SOUND_ICONS = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T'];
 
     function populateIconPicker() {
       const picker = document.getElementById('iconPicker');
@@ -352,14 +361,14 @@
         div.onclick = (e) => { if (!e.target.classList.contains('edit-btn')) playSound(slot.id); };
         const keyHint = keyLabels[i] ? `<span class="key-hint">${keyLabels[i]}</span>` : '';
         const fileHint = slot.file === '__idb'
-          ? '<span class="sound-file-hint">📂 imported</span>'
+          ? '<span class="sound-file-hint">imported</span>'
           : slot.file
             ? `<span class="sound-file-hint">${esc(slot.file)}</span>`
             : '<span class="sound-file-hint">click ✏️ to set file</span>';
         div.innerHTML = `
           ${keyHint}
           <button class="edit-btn" onclick="openEdit('${slot.id}')" title="Edit">✏️</button>
-          <span class="sound-icon">${slot.icon || '🔊'}</span>
+          <span class="sound-icon">${slot.icon || 'A'}</span>
           <span class="sound-label">${esc(slot.label)}</span>
           ${fileHint}
         `;
@@ -383,7 +392,7 @@
       const slot = slots.find(s => s.id === id);
       if (!slot) return;
       editingId = id;
-      selectedIcon = slot.icon || '🔊';
+      selectedIcon = normalizeIcon(slot.icon, slots.indexOf(slot));
       document.getElementById('editLabel').value = slot.label;
       document.getElementById('editFile').value  = slot.file === '__idb' ? '' : (slot.file || '');
       const hint = document.getElementById('filePathHint');

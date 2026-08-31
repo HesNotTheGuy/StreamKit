@@ -7,34 +7,65 @@
   <link rel="stylesheet" href="../../../assets/styles/dashboard.css">
   <script src="../../../assets/js/util.js"></script>
   <style>
-    body { padding: 24px; max-width: 520px; }
+    body {
+      padding: 28px 32px;
+      max-width: 560px;
+      margin: 0 auto;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
 
-    .tool-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
-
-    .game-input { font-size: 17px; padding: 12px 16px; margin-bottom: 20px; }
+    .game-input {
+      font-size: 15px;
+      padding: 12px 14px;
+      margin-bottom: 16px;
+      border-radius: 6px;
+    }
 
     .record-card {
       text-align: center;
-      padding: 36px 20px 28px;
-      margin-bottom: 20px;
+      padding: 32px 20px 24px;
+      margin-bottom: 16px;
       position: relative;
+      background:
+        linear-gradient(180deg, color-mix(in srgb, var(--accent) 6%, var(--bg2)) 0%, var(--bg2) 40%);
+      border-color: color-mix(in srgb, var(--accent) 22%, var(--border));
     }
     .record-numbers {
       display: flex;
-      align-items: center;
+      align-items: flex-end;
       justify-content: center;
-      gap: 6px;
-      margin-bottom: 16px;
+      gap: 4px;
+      margin-bottom: 18px;
     }
     .rn-num {
-      font-size: 64px;
-      font-weight: 800;
-      line-height: 1;
-      min-width: 70px;
+      font-family: var(--font-display);
+      font-size: 72px;
+      font-weight: 400;
+      line-height: 0.9;
+      min-width: 64px;
       text-align: center;
+      letter-spacing: 0.02em;
     }
-    .rn-label { font-size: 28px; font-weight: 700; color: var(--muted); }
-    .rn-sep   { font-size: 36px; color: var(--border); margin: 0 4px; }
+    .rn-label {
+      font-family: var(--font-display);
+      font-size: 28px;
+      font-weight: 400;
+      color: var(--muted);
+      line-height: 1;
+      padding-bottom: 6px;
+      letter-spacing: 0.04em;
+    }
+    .rn-sep {
+      font-family: var(--font-display);
+      font-size: 40px;
+      color: var(--border);
+      margin: 0 6px;
+      line-height: 0.9;
+      padding-bottom: 4px;
+    }
     .rn-wins   { color: var(--green); }
     .rn-losses { color: var(--red); }
     .rn-draws  { color: var(--yellow); }
@@ -42,47 +73,62 @@
     .record-stats {
       display: flex;
       justify-content: center;
-      gap: 28px;
-      font-size: 15px;
+      align-items: center;
+      gap: 20px;
+      font-family: var(--font-mono);
+      font-size: 12px;
       color: var(--muted);
+      letter-spacing: 0.04em;
     }
-    .record-stats strong { color: var(--text); }
+    .record-stats strong { color: var(--text); font-weight: 700; }
 
     .streak-pill {
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      padding: 4px 14px;
-      border-radius: 20px;
-      font-size: 14px;
+      padding: 3px 10px;
+      border-radius: 3px;
+      font-size: 12px;
       font-weight: 700;
+      font-family: var(--font-mono);
+      letter-spacing: 0.04em;
     }
-    .streak-win  { background: rgba(46,204,113,0.15); color: var(--green); border: 1px solid rgba(46,204,113,0.3); }
-    .streak-loss { background: rgba(231,76,60,0.15);  color: var(--red);   border: 1px solid rgba(231,76,60,0.3); }
-    .streak-draw { background: rgba(240,165,0,0.15);  color: var(--yellow);border: 1px solid rgba(240,165,0,0.3); }
+    .streak-win  { background: color-mix(in srgb, var(--green) 14%, transparent); color: var(--green); border: 1px solid color-mix(in srgb, var(--green) 35%, transparent); }
+    .streak-loss { background: color-mix(in srgb, var(--red) 14%, transparent);  color: var(--red);   border: 1px solid color-mix(in srgb, var(--red) 35%, transparent); }
+    .streak-draw { background: color-mix(in srgb, var(--yellow) 14%, transparent);  color: var(--yellow);border: 1px solid color-mix(in srgb, var(--yellow) 35%, transparent); }
 
     .action-row {
       display: grid;
       grid-template-columns: 1fr 1fr 1fr;
-      gap: 12px;
-      margin-bottom: 16px;
+      gap: 10px;
+      margin-bottom: 14px;
     }
-    .action-row .btn { padding: 22px 10px; font-size: 19px; width: 100%; }
+    .action-row .btn {
+      padding: 18px 10px;
+      font-family: var(--font-display);
+      font-size: 22px;
+      font-weight: 400;
+      letter-spacing: 0.06em;
+      width: 100%;
+      border-radius: 6px;
+    }
 
     .footer-row { display: flex; justify-content: space-between; align-items: center; }
 
     .undo-btn { color: var(--muted); font-size: 13px; }
     .undo-btn:disabled { opacity: 0.3; }
 
-    /* history flash */
     .record-card.added { animation: pulse-green 0.4s ease; }
   </style>
 </head>
 <body>
-  <div class="tool-header">
-    <h1>W/L Tracker</h1>
-    <span id="totalGames" style="color:var(--muted);font-size:14px;"></span>
-  </div>
+  <header class="tool-header">
+    <div class="tool-heading">
+      <div class="tool-eyebrow"><span class="sk-mark" aria-hidden="true"><span></span><span></span><span></span></span> StreamKit · Overlay</div>
+      <h1 class="tool-title">W/L Tracker</h1>
+      <div class="tool-meta" id="totalGames"></div>
+    </div>
+  </header>
 
   <input type="text" class="game-input" id="gameName" placeholder="Game / Session name (optional)" maxlength="50">
 
@@ -209,8 +255,8 @@
       transition: border-color 0.15s, background 0.15s;
       user-select: none;
     }
-    .opt-card:hover { border-color: rgba(124,106,247,0.4); }
-    .opt-card.active { border-color: var(--accent); background: rgba(124,106,247,0.1); }
+    .opt-card:hover { border-color: rgba(47,212,169,0.4); }
+    .opt-card.active { border-color: var(--accent); background: rgba(47,212,169,0.1); }
     .opt-icon  { font-size: 18px; line-height: 1; }
     .opt-label { font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
     .opt-card.active .opt-label { color: var(--text); }
@@ -221,14 +267,14 @@
       display: inline-flex; flex-direction: column; gap: 6px;
       min-height: 52px; transition: background 0.2s, border-color 0.2s;
     }
-    .pv-bg-none  { background: rgba(0,0,0,0.45); border: 1px solid color-mix(in srgb, var(--chrome, #7c6af7) 20%, transparent); }
-    .pv-bg-glass { background: rgba(0,0,0,0.55); border: 1px solid color-mix(in srgb, var(--chrome, #7c6af7) 35%, transparent); }
-    .pv-bg-solid { background: rgba(12,12,12,0.96); border: 1px solid color-mix(in srgb, var(--chrome, #7c6af7) 22%, transparent); }
-    .prev-stats { font-size: 12px; color: color-mix(in srgb, var(--chrome, #7c6af7) 30%, rgba(255,255,255,0.75)); font-weight: 600; }
+    .pv-bg-none  { background: rgba(0,0,0,0.45); border: 1px solid color-mix(in srgb, var(--chrome, #2fd4a9) 20%, transparent); }
+    .pv-bg-glass { background: rgba(0,0,0,0.55); border: 1px solid color-mix(in srgb, var(--chrome, #2fd4a9) 35%, transparent); }
+    .pv-bg-solid { background: rgba(12,12,12,0.96); border: 1px solid color-mix(in srgb, var(--chrome, #2fd4a9) 22%, transparent); }
+    .prev-stats { font-size: 12px; color: color-mix(in srgb, var(--chrome, #2fd4a9) 30%, rgba(255,255,255,0.75)); font-weight: 600; }
     /* pill layout preview */
-    .pv-pill { display: flex; align-items: center; border: 1px solid color-mix(in srgb, var(--chrome, #7c6af7) 45%, transparent); border-radius: 999px; overflow: hidden; background: rgba(0,0,0,0.3); }
+    .pv-pill { display: flex; align-items: center; border: 1px solid color-mix(in srgb, var(--chrome, #2fd4a9) 45%, transparent); border-radius: 999px; overflow: hidden; background: rgba(0,0,0,0.3); }
     .pv-pill-seg { font-weight: 800; padding: 4px 10px; line-height: 1; }
-    .pv-pill-sep { width: 1px; background: color-mix(in srgb, var(--chrome, #7c6af7) 45%, transparent); align-self: stretch; }
+    .pv-pill-sep { width: 1px; background: color-mix(in srgb, var(--chrome, #2fd4a9) 45%, transparent); align-self: stretch; }
 
     .preview-hint { font-size: 11px; color: var(--muted); margin-top: 8px; }
   </style>
@@ -267,7 +313,7 @@
         <div class="color-swatch"><label>Draw</label>
           <input type="color" id="colorD" value="#f0a500" oninput="saveOvStyle()"></div>
         <div class="color-swatch"><label title="Box border, separators &amp; labels">Accent</label>
-          <input type="color" id="chromeColor" value="#7c6af7" oninput="saveOvStyle()" title="Box border, separators &amp; labels"></div>
+          <input type="color" id="chromeColor" value="#2fd4a9" oninput="saveOvStyle()" title="Box border, separators &amp; labels"></div>
       </div>
     </div>
     <div class="style-section">
@@ -300,7 +346,7 @@
       font: 'system', colorW: '#2ecc71', colorL: '#e74c3c', colorD: '#f0a500',
       showDraws: true, showWinRate: true, showStreak: true,
       layout: 'horizontal', background: 'none', size: 'md',
-      effect: 'none', chromeColor: '#7c6af7',
+      effect: 'none', chromeColor: '#2fd4a9',
     };
 
     const LAYOUTS = [
@@ -329,7 +375,7 @@
     let currentBg       = 'none';
     let currentSize     = 'md';
     let currentEffect   = 'none';
-    let currentChrome   = '#7c6af7';
+    let currentChrome   = '#2fd4a9';
 
     function getOvStyle() {
       try { return { ...OV_DEFS, ...JSON.parse(localStorage.getItem(OV_KEY)) }; }
@@ -371,7 +417,7 @@
       const box    = document.getElementById('previewBox');
       const showD  = s.showDraws !== false;
       const eff    = s.effect || 'none';
-      const chrome = s.chromeColor || '#7c6af7';
+      const chrome = s.chromeColor || '#2fd4a9';
       const cW = s.colorW, cL = s.colorL, cD = s.colorD;
 
       box.className    = 'style-preview-box pv-bg-' + (s.background || 'none');
@@ -474,11 +520,11 @@
       currentBg     = s.background  || 'none';
       currentSize   = s.size        || 'md';
       currentEffect = s.effect      || 'none';
-      currentChrome = s.chromeColor || '#7c6af7';
+      currentChrome = s.chromeColor || '#2fd4a9';
       document.getElementById('colorW').value      = s.colorW      || '#2ecc71';
       document.getElementById('colorL').value      = s.colorL      || '#e74c3c';
       document.getElementById('colorD').value      = s.colorD      || '#f0a500';
-      document.getElementById('chromeColor').value = s.chromeColor || '#7c6af7';
+      document.getElementById('chromeColor').value = s.chromeColor || '#2fd4a9';
       document.getElementById('showDraws').checked   = s.showDraws  !== false;
       document.getElementById('showWinRate').checked = s.showWinRate !== false;
       document.getElementById('showStreak').checked  = s.showStreak  !== false;

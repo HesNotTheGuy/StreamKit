@@ -20,18 +20,20 @@
       z-index: 10;
     }
     .tab-btn {
-      padding: 10px 18px;
+      padding: 10px 16px;
       border: none;
       background: none;
       color: var(--muted);
-      font-size: 14px;
-      font-weight: 600;
+      font-size: 12px;
+      font-weight: 700;
       cursor: pointer;
       border-bottom: 2px solid transparent;
       margin-bottom: -2px;
-      border-radius: 6px 6px 0 0;
+      border-radius: 0;
       transition: color 0.15s;
-      font-family: inherit;
+      font-family: var(--font-mono);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
     }
     .tab-btn:hover { color: var(--text); }
     .tab-btn.active { color: var(--text); border-bottom-color: var(--accent); }
@@ -64,10 +66,21 @@
       gap: 10px;
       padding: 12px 14px;
       background: var(--bg3);
-      border-radius: 10px;
+      border-radius: var(--radius);
       border: 1px solid var(--border);
     }
     .tool-icon { font-size: 20px; flex-shrink: 0; margin-top: 1px; }
+    .tool-icon.sk-chip-mark {
+      font-family: var(--font-display);
+      font-size: 16px;
+      letter-spacing: 0.04em;
+      color: var(--accent);
+      width: 28px; height: 28px;
+      display: inline-flex; align-items: center; justify-content: center;
+      border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--border));
+      border-radius: 4px;
+      background: color-mix(in srgb, var(--accent) 8%, transparent);
+    }
     .tool-name { font-size: 14px; font-weight: 700; margin-bottom: 2px; }
     .tool-desc { font-size: 12px; color: var(--muted); line-height: 1.4; }
     .obs-badge {
@@ -76,7 +89,7 @@
       font-weight: 700;
       padding: 1px 6px;
       border-radius: 8px;
-      background: rgba(124,106,247,0.2);
+      background: rgba(47,212,169,0.2);
       color: var(--accent);
       margin-left: 4px;
       vertical-align: middle;
@@ -90,12 +103,13 @@
       align-items: flex-start;
     }
     .step-num {
-      width: 28px; height: 28px;
-      border-radius: 50%;
+      width: 22px; height: 22px;
+      border-radius: 3px;
       background: var(--accent);
-      color: #fff;
-      font-size: 13px;
-      font-weight: 800;
+      color: #061410;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
       display: flex; align-items: center; justify-content: center;
       flex-shrink: 0;
       margin-top: 1px;
@@ -110,7 +124,7 @@
     .copy-row { display: flex; gap: 6px; margin-top: 6px; }
     .copy-row input {
       flex: 1;
-      font-family: 'Consolas', 'Courier New', monospace;
+      font-family: var(--font-mono);
       font-size: 12px;
       color: var(--accent);
       background: var(--bg3);
@@ -139,7 +153,7 @@
     .overlay-card {
       background: var(--bg2);
       border: 1px solid var(--border);
-      border-radius: 10px;
+      border-radius: var(--radius);
       padding: 14px 16px;
     }
     .overlay-header {
@@ -265,25 +279,26 @@
 <body>
 
   <div class="tab-bar">
-    <button class="tab-btn active" onclick="switchTab('overview')">👋 Overview</button>
-    <button class="tab-btn" onclick="switchTab('spotify')">🎵 Spotify</button>
-    <button class="tab-btn" onclick="switchTab('obs')">📺 OBS Overlays</button>
-    <button class="tab-btn" onclick="switchTab('sounds')">🔊 Soundboard</button>
-    <button class="tab-btn" onclick="switchTab('twitch')">🟣 Twitch</button>
-    <button class="tab-btn" onclick="switchTab('shortcuts')">⌨️ Shortcuts</button>
+    <button class="tab-btn active" onclick="switchTab('overview')">Overview</button>
+    <button class="tab-btn" onclick="switchTab('spotify')">Spotify</button>
+    <button class="tab-btn" onclick="switchTab('obs')">OBS</button>
+    <button class="tab-btn" onclick="switchTab('sounds')">Soundboard</button>
+    <button class="tab-btn" onclick="switchTab('twitch')">Twitch</button>
+    <button class="tab-btn" onclick="switchTab('shortcuts')">Shortcuts</button>
   </div>
 
   <!-- ═══ OVERVIEW ═══ -->
   <div class="tab-content active" id="tab-overview">
     <div class="section">
-      <div class="section-title">Welcome to StreamKit 👋</div>
+      <div class="tool-eyebrow" style="margin-bottom:10px"><span class="sk-mark" aria-hidden="true"><span></span><span></span><span></span></span> StreamKit · Setup</div>
+      <div class="section-title" style="font-family:var(--font-display);font-size:32px;letter-spacing:0.05em;font-weight:400">Welcome to StreamKit</div>
       <div class="section-sub">
-        A lightweight utility suite for streamers — no frameworks, no cloud, all data stays on your machine.
-        Use the sidebar to switch tools, or press <kbd>1</kbd>–<kbd>9</kbd> for instant access.
+        Local second-monitor tools for streamers — no cloud, no accounts of ours. You bring the keys.
+        Use the sidebar to switch tools, or press <kbd>1</kbd>–<kbd>9</kbd>.
       </div>
       <div class="callout success">
-        <span class="callout-icon">✅</span>
-        <span>StreamKit is fully set up. The sections below walk through optional integrations (Spotify, OBS) and configuration tips.</span>
+        <span class="callout-icon"><span class="sk-mark" aria-hidden="true"><span></span><span></span><span></span></span></span>
+        <span>StreamKit is ready. Optional integrations (Spotify, OBS, Twitch) are below.</span>
       </div>
     </div>
 
@@ -291,84 +306,84 @@
       <div class="section-title">What's included</div>
       <div class="tool-grid">
         <div class="tool-chip">
-          <span class="tool-icon">🎵</span>
+          <span class="tool-icon sk-chip-mark">SP</span>
           <div>
             <div class="tool-name">Spotify <span class="obs-badge">OBS</span></div>
             <div class="tool-desc">Viewer song requests via Twitch chat (<code>!sr</code>), now playing overlay.</div>
           </div>
         </div>
         <div class="tool-chip">
-          <span class="tool-icon">📊</span>
+          <span class="tool-icon sk-chip-mark">WL</span>
           <div>
             <div class="tool-name">W/L Tracker <span class="obs-badge">OBS</span></div>
             <div class="tool-desc">Track wins, losses, draws with win rate and streak detection.</div>
           </div>
         </div>
         <div class="tool-chip">
-          <span class="tool-icon">✅</span>
+          <span class="tool-icon sk-chip-mark">CK</span>
           <div>
             <div class="tool-name">Checklist</div>
             <div class="tool-desc">Pre / mid / post-stream task lists with interval reminders.</div>
           </div>
         </div>
         <div class="tool-chip">
-          <span class="tool-icon">🎮</span>
+          <span class="tool-icon sk-chip-mark">MG</span>
           <div>
             <div class="tool-name">Mini-Games</div>
             <div class="tool-desc">Polls, team battle picker, and timed trivia rounds.</div>
           </div>
         </div>
         <div class="tool-chip">
-          <span class="tool-icon">⏱</span>
+          <span class="tool-icon sk-chip-mark">TM</span>
           <div>
             <div class="tool-name">Timers <span class="obs-badge">OBS</span></div>
             <div class="tool-desc">Multiple named countdown / countup / interval timers.</div>
           </div>
         </div>
         <div class="tool-chip">
-          <span class="tool-icon">👥</span>
+          <span class="tool-icon sk-chip-mark">Q</span>
           <div>
             <div class="tool-name">Viewer Queue</div>
             <div class="tool-desc">Manage a live queue of viewers with notes per slot.</div>
           </div>
         </div>
         <div class="tool-chip">
-          <span class="tool-icon">🎯</span>
+          <span class="tool-icon sk-chip-mark">GL</span>
           <div>
             <div class="tool-name">Goal Tracker <span class="obs-badge">OBS</span></div>
             <div class="tool-desc">Progress bars for sub goals, donation goals, challenge targets.</div>
           </div>
         </div>
         <div class="tool-chip">
-          <span class="tool-icon">🔊</span>
+          <span class="tool-icon sk-chip-mark">SB</span>
           <div>
             <div class="tool-name">Soundboard</div>
             <div class="tool-desc">Grid of audio buttons — drop <code>.mp3</code> files to activate.</div>
           </div>
         </div>
         <div class="tool-chip">
-          <span class="tool-icon">📋</span>
+          <span class="tool-icon sk-chip-mark">CN</span>
           <div>
             <div class="tool-name">Clip Notes</div>
             <div class="tool-desc">One-tap clip marker with tags and session export.</div>
           </div>
         </div>
         <div class="tool-chip">
-          <span class="tool-icon">📡</span>
+          <span class="tool-icon sk-chip-mark">SI</span>
           <div>
             <div class="tool-name">Stream Info</div>
             <div class="tool-desc">Edit title, category, and tags without leaving StreamKit.</div>
           </div>
         </div>
         <div class="tool-chip">
-          <span class="tool-icon">⚔️</span>
+          <span class="tool-icon sk-chip-mark">RD</span>
           <div>
             <div class="tool-name">Raid Tracker</div>
             <div class="tool-desc">Auto-logs incoming raids via Twitch IRC with viewer counts.</div>
           </div>
         </div>
         <div class="tool-chip">
-          <span class="tool-icon">📝</span>
+          <span class="tool-icon sk-chip-mark">PD</span>
           <div>
             <div class="tool-name">Scratch Pad</div>
             <div class="tool-desc">Persistent notepad for mid-stream notes, links, and shoutout queues.</div>
